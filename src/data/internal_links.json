@@ -1,0 +1,42 @@
+[
+  {
+    "keyword": "0x80070002",
+    "slug": "windows-update-0x80070002",
+    "description": "Windows Update missing files mismatch error"
+  },
+  {
+    "keyword": "0x800f081f",
+    "slug": "windows-update-0x800f081f",
+    "description": "Source files not found during net framework or update build"
+  },
+  {
+    "keyword": "0x000000EF",
+    "slug": "bsod-0x000000ef",
+    "description": "Critical process died crash code"
+  },
+  {
+    "keyword": "0x000000D1",
+    "slug": "bsod-0x000000d1",
+    "description": "Driver IRQL not less or equal crash code"
+  },
+  {
+    "keyword": "vcruntime140.dll",
+    "slug": "dll-vcruntime140",
+    "description": "Microsoft Visual C++ Redistributable runtime module"
+  },
+  {
+    "keyword": "msvcp140.dll",
+    "slug": "dll-msvcp140",
+    "description": "Visual C++ standard library runtime extension"
+  },
+  {
+    "keyword": "sfc /scannow",
+    "slug": "guides-sfc-scannow",
+    "description": "System File Checker command reference guide"
+  },
+  {
+    "keyword": "dxdiag",
+    "slug": "tools-dxdiag",
+    "description": "DirectX Diagnostics application help guide"
+  }
+]

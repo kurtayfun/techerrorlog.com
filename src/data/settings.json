@@ -1,0 +1,10 @@
+{
+  "siteName": "TechErrorLog",
+  "siteUrl": "https://techerrorlog.com",
+  "description": "Premium Windows Diagnostic Support Guides, Blue Screen (BSOD) Error Resolutions, and missing Dynamic Link Library (DLL) playbooks.",
+  "rssEnabled": true,
+  "sitemapAutoUpdate": true,
+  "generationLanguageDefault": "tr",
+  "geminiModel": "gemini-3.5-flash",
+  "lastUpdated": "2026-06-09T10:30:00Z"
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "standard-troubleshooting",
+    "name": "Standard Troubleshooting Guide",
+    "description": "Standard diagnostic document featuring error description, quick fix, deep resolutions, FAQ, and related articles.",
+    "structure": [
+      "Title",
+      "Description",
+      "Quick Fix (30-Second Solution)",
+      "Why it happens (Symptoms & Root Causes)",
+      "Deep Resolution Methods (Steps 1, 2, 3)",
+      "Advanced Fixes & Alternative Methods",
+      "FAQ Assistance",
+      "Related Articles"
+    ]
+  }
+]

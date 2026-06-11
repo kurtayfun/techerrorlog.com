@@ -1,0 +1,28 @@
+---
+slug: "bsod-0x000000d1"
+title: "Blue Screen Error 0x000000D1: Driver IRQL Not Less Or Equal"
+description: "Occurs when a physical device driver attempts to access an invalid paging memory address at an elevated interrupt level."
+errorCode: "0x000000D1"
+category: "BSOD (Blue Screen)"
+difficulty: "Advanced"
+estTime: "15 min"
+successRate: "Normal (90%)"
+date: "2026-06-08"
+author: "TechErrorLog Team"
+tags: bsod, driver, system-crash, ndis
+---
+
+### Introduction
+The network Adapter or Storage host controller driver issued an invalid memory pointer call. Follow this guide to analyze mini-dump files and update bad drivers.
+
+### Symptoms & Root Causes
+- Discovered network device drivers (`ndis.sys`) or graphics driver mismatch.
+- Interrupted memory access parameters.
+
+### Deep Resolution Methods
+To identify the culprit driver, review the crash dump name or update your active driver profiles:
+
+```bash
+devmgmt.msc
+# Locate the flagged device, right-click and select Update Driver
+```

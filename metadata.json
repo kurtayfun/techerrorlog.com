@@ -1,0 +1,6 @@
+{
+  "name": "Tech Error Log",
+  "description": "A clean, structured repository for logging and resolving technical errors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

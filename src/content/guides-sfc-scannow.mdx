@@ -1,0 +1,28 @@
+---
+slug: "guides-sfc-scannow"
+title: "System File Checker Guide: Running sfc /scannow"
+description: "Step-by-step diagnostic workflows to verify protected catalog system file integrity and recover broken OS system structures."
+errorCode: "sfc"
+category: "Guides"
+difficulty: "Easy"
+estTime: "10 min"
+successRate: "High (95%)"
+date: "2026-06-08"
+author: "TechErrorLog Team"
+tags: system-repair, sfc-scannow, command-prompt
+---
+
+### Introduction
+The System File Checker is Microsoft's built-in tool that scans your computer for any corrupted or missing system files and restores them securely using cached local replicas.
+
+### Symptoms & Root Causes
+- Discovered slow performance, erratic app startups, or sudden system errors.
+- Unregistered registries and active driver conflicts.
+
+### Deep Resolution Methods
+Execute this command lines sequentially inside an elevated Command Prompt to trigger a complete scan:
+
+```bash
+sfc /scannow
+```
+The utility will report either "Windows Resource Protection did not find any integrity violations" or "Windows Resource Protection found corrupt files and successfully repaired them."

@@ -1,0 +1,28 @@
+---
+slug: "windows-update-0x800f081f"
+title: "Windows Update Error 0x800f081f: Source Files Not Found"
+description: "Occurs when Windows Update cannot find critical files required to install security updates and net framework features."
+errorCode: "0x800f081f"
+category: "Windows Update"
+difficulty: "Medium"
+estTime: "15 min"
+successRate: "High (95%)"
+date: "2026-06-08"
+author: "TechErrorLog Team"
+tags: windows, update, net-framework, system-repair
+---
+
+### Introduction
+The Windows update client cannot find the required source files to enable a custom feature or package installation. This is common when utilizing local install mediums or behind misconfigured corporate proxies.
+
+### Symptoms & Root Causes
+- Discovered components store corruption inside the Side-by-Side (SxS) directories.
+- Unaligned state in local updates repository because of network timeouts query filters.
+
+### Deep Resolution Methods
+Execute these command lines sequentially inside an elevated Command Prompt to restore system health from official online images:
+
+```bash
+DISM.exe /Online /Cleanup-Image /ScanHealth
+DISM.exe /Online /Cleanup-Image /RestoreHealth
+```

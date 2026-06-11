@@ -1,0 +1,65 @@
+[
+  {
+    "id": "windows-update",
+    "slug": "windows-update-errors",
+    "name": "Windows Update Errors",
+    "badge": "2 Guides",
+    "description": "Troubleshoot standard Windows features update, security patch, and CAB file installation failures.",
+    "iconType": "windows"
+  },
+  {
+    "id": "bsod",
+    "slug": "bsod",
+    "name": "BSOD (Blue Screen)",
+    "badge": "2 Guides",
+    "description": "Resolve Windows Kernel crashes, active memory dumps, and physical hardware check failures.",
+    "iconType": "bsod"
+  },
+  {
+    "id": "dll",
+    "slug": "dll-errors",
+    "name": "DLL Errors",
+    "badge": "2 Guides",
+    "description": "Locate and register missing Shared Libraries and Dynamic Link Libraries for user programs.",
+    "iconType": "dll"
+  },
+  {
+    "id": "gaming",
+    "slug": "gaming-errors",
+    "name": "Gaming Errors",
+    "description": "Resolve DirectX diagnostic errors, graphics driver compatibility, and multiplayer network drop states.",
+    "iconType": "gaming"
+  },
+  {
+    "id": "activation",
+    "slug": "activation-issues",
+    "name": "Activation Issues",
+    "badge": "2 Guides",
+    "description": "Troubleshoot Windows server KMS licensing, digital product authentication, and product key errors.",
+    "iconType": "activation"
+  },
+  {
+    "id": "driver",
+    "slug": "driver-problems",
+    "name": "Driver Problems",
+    "badge": "2 Guides",
+    "description": "Resolve display watchdog timeouts, peripheral device driver conflicts, and chipset load failures.",
+    "iconType": "driver"
+  },
+  {
+    "id": "performance",
+    "slug": "performance-problems",
+    "name": "Performance Problems",
+    "badge": "0 Guides",
+    "description": "Resolve slow performance, high CPU/RAM usage, and disk bottlenecks.",
+    "iconType": "performance"
+  },
+  {
+    "id": "troubleshooting",
+    "slug": "troubleshooting-guides",
+    "name": "Popular Troubleshooting Guides",
+    "badge": "0 Guides",
+    "description": "Complete general step-by-step diagnostic workflows and recovery procedures.",
+    "iconType": "troubleshooting"
+  }
+]
