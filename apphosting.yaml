@@ -9,3 +9,14 @@ runConfig:
   concurrency: 80
   cpu: 1
   memoryMiB: 512
+
+# Environment variables and secrets for Next.js App Router runtime
+environmentVariables:
+  - variable: APP_URL
+    value: "https://your-custom-domain.com" # Canlı alan adınızı buraya yazabilirsiniz veya Firebase Console'dan değiştirebilirsiniz
+
+# Secrets managed securely by Cloud Secret Manager via Firebase App Hosting
+# Firebase App Hosting kurulumunda bu secret'ı kolayca oluşturabilir veya bağlayabilirsiniz.
+secrets:
+  - variable: GEMINI_API_KEY
+    secret: gemini-api-key
