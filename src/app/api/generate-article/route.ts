@@ -2,6 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { adminDb } from "@/lib/firebase-admin";
+import { doc, setDoc } from "firebase/firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -135,7 +137,7 @@ export async function POST(req: NextRequest) {
     // Try to load system instruction from prompts.json, otherwise fallback
     let systemInstruction = "";
     try {
-      const promptsPath = path.join(process.cwd(), "data/prompts.json");
+      const promptsPath = path.join(process.cwd(), "src/data/prompts.json");
       if (fs.existsSync(promptsPath)) {
         const promptsObj = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
         if (promptsObj && promptsObj.systemInstruction) {
@@ -226,7 +228,7 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
     }
 
     // Attempt to write to content directory
-    const contentDir = path.join(process.cwd(), "content");
+    const contentDir = path.join(process.cwd(), "src/content");
     if (!fs.existsSync(contentDir)) {
       fs.mkdirSync(contentDir, { recursive: true });
     }
@@ -252,7 +254,7 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
     }
 
     // UPDATE DATABASE (articles.json)
-    const articlesPath = path.join(process.cwd(), "data/articles.json");
+    const articlesPath = path.join(process.cwd(), "src/data/articles.json");
     if (fs.existsSync(articlesPath)) {
       try {
         const fileContent = fs.readFileSync(articlesPath, "utf8");
@@ -305,6 +307,22 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
           });
         }
         fs.writeFileSync(articlesPath, JSON.stringify(articles, null, 2), "utf8");
+
+        // Write the article metadata with full content directly into Cloud Firestore
+        if (adminDb) {
+          try {
+            const index = articles.findIndex((a: any) => a.slug === slugName);
+            const savedMetadata = index !== -1 ? articles[index] : articles[articles.length - 1];
+            await setDoc(doc(adminDb, "articles", slugName), {
+              ...savedMetadata,
+              content: mdxContent,
+              secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
+            });
+            console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore.`);
+          } catch (fsErr) {
+            console.error(`[FS Sync Fail] Could not save generated article ${slugName} to Firestore:`, fsErr);
+          }
+        }
       } catch (err) {
         console.error("Failed to update articles.json db:", err);
       }

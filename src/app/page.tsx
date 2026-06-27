@@ -1,14 +1,14 @@
 import { getAllDocs, getCategoriesData, getArticlesData, getSettingsData } from "@/lib/content";
 import HomeClient from "@/components/HomeClient";
 
-// Force dynamic execution so new generated dynamic documents appear in real time on refresh
-export const dynamic = "force-dynamic";
+// For static export, the main landing page is pre-compiled at build time.
+export const dynamic = "force-static";
 
 export default async function Page() {
   const docs = await getAllDocs();
-  const categories = getCategoriesData();
-  const articlesList = getArticlesData();
-  const settings = getSettingsData();
+  const categories = await getCategoriesData();
+  const articlesList = await getArticlesData();
+  const settings = await getSettingsData();
   
   return (
     <HomeClient 

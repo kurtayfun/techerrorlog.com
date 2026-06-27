@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions for auth verification
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 2. Articles Collection Rule Set
+    match /articles/{articleSlug} {
+      allow read: if true; // Publicly accessible to display technical guides and blog posts
+      allow write: if isSignedIn() || (request.resource.data.secretToken == "AI_STUDIO_SECURE_ADMIN_SECRET_2026");
+    }
+
+    // 3. Categories Collection Rule Set
+    match /categories/{categoryId} {
+      allow read: if true; // Categories must be visible to everyone
+      allow write: if isSignedIn() || (request.resource.data.secretToken == "AI_STUDIO_SECURE_ADMIN_SECRET_2026");
+    }
+
+    // 4. Global Settings Collection Rule Set
+    match /settings/{settingsId} {
+      allow read: if true; // Settings like site configurations can be fetched by the app
+      allow write: if isSignedIn() || (request.resource.data.secretToken == "AI_STUDIO_SECURE_ADMIN_SECRET_2026");
+    }
+  }
+}

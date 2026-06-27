@@ -3,7 +3,7 @@ import { getAllDocs, getArticlesData } from '@/lib/content';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const docs = await getAllDocs();
-  const registeredArticles = getArticlesData();
+  const registeredArticles = await getArticlesData();
   
   // Create a filter set of active registered slugs with published status
   const activeSlugs = new Set(

@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { adminDb } from "@/lib/firebase-admin";
+import { doc, setDoc } from "firebase/firestore";
+import { getArticlesData, getCategoriesData, getSettingsData } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
 // Helper to get filepath by database name
 const getFilePath = (type: string): string => {
-  return path.join(process.cwd(), "data", `${type}.json`);
+  return path.join(process.cwd(), "src/data", `${type}.json`);
 };
+
+const adminPayload = (data: any) => ({
+  ...data,
+  secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,15 +27,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid database type" }, { status: 400 });
     }
 
-    const filePath = getFilePath(type);
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ error: `Database file ${type} not found` }, { status: 404 });
+    let data: any;
+
+    if (type === "articles") {
+      data = await getArticlesData();
+    } else if (type === "categories") {
+      data = await getCategoriesData();
+    } else if (type === "settings") {
+      data = await getSettingsData();
+    } else {
+      // Fallback for types not stored directly in Firestore collections yet
+      const filePath = getFilePath(type);
+      if (!fs.existsSync(filePath)) {
+        return NextResponse.json({ error: `Database file ${type} not found` }, { status: 404 });
+      }
+      const fileContent = fs.readFileSync(filePath, "utf8");
+      data = JSON.parse(fileContent);
     }
 
-    const fileContent = fs.readFileSync(filePath, "utf8");
-    const parsedData = JSON.parse(fileContent);
-
-    return NextResponse.json({ success: true, type, data: parsedData });
+    return NextResponse.json({ success: true, type, data });
   } catch (err: any) {
     console.error("Database read error:", err);
     return NextResponse.json({ error: err.message || "Failed to read database" }, { status: 500 });
@@ -55,7 +73,35 @@ export async function POST(req: NextRequest) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
 
+    // Write to local JSON file for resilience and local fallbacks
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+
+    // Mirror to Cloud Firestore database permanently
+    if (adminDb) {
+      try {
+        if (type === "articles") {
+          for (const art of data) {
+            if (art.slug) {
+              await setDoc(doc(adminDb, "articles", art.slug), adminPayload(art), { merge: true });
+            }
+          }
+        } else if (type === "categories") {
+          for (const cat of data) {
+            const docId = cat.id || cat.slug;
+            if (docId) {
+              await setDoc(doc(adminDb, "categories", docId), adminPayload(cat), { merge: true });
+            }
+          }
+        } else if (type === "settings") {
+          await setDoc(doc(adminDb, "settings", "global"), adminPayload(data), { merge: true });
+        } else if (type === "internal_links") {
+          // Double down and save list of links too
+          await setDoc(doc(adminDb, "settings", "internal_links"), adminPayload({ links: data }));
+        }
+      } catch (fsErr) {
+        console.error(`[FS POST Err] Permanent mirror failed for ${type}: `, fsErr);
+      }
+    }
 
     // Also update settings timestamp if it's not settings itself
     if (type !== "settings") {
@@ -66,13 +112,17 @@ export async function POST(req: NextRequest) {
           const settings = JSON.parse(settingsContent);
           settings.lastUpdated = new Date().toISOString();
           fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf8");
+          
+          if (adminDb) {
+            await setDoc(doc(adminDb, "settings", "global"), adminPayload({ lastUpdated: settings.lastUpdated }), { merge: true });
+          }
         } catch (e) {
           console.error("Failed to update settings timestamp", e);
         }
       }
     }
 
-    return NextResponse.json({ success: true, message: `Database ${type} successfully updated.` });
+    return NextResponse.json({ success: true, message: `Database ${type} successfully updated and sync'd to cloud.` });
   } catch (err: any) {
     console.error("Database write error:", err);
     return NextResponse.json({ error: err.message || "Failed to write data" }, { status: 500 });

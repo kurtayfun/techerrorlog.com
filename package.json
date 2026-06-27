@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "if [ -d src/app/api ]; then mv src/app/api src/app-api-temp; fi; if [ -d src/app/feed.xml ]; then mv src/app/feed.xml src/app-feed-temp; fi; next build; if [ -d src/app-api-temp ]; then mv src/app-api-temp src/app/api; fi; if [ -d src/app-feed-temp ]; then mv src/app-feed-temp src/app/feed.xml; fi",
     "start": "next start",
-    "lint": "eslint .",
-    "clean": "next clean"
+    "lint": "next lint"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -15,6 +14,8 @@
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "firebase": "^12.14.0",
+    "firebase-admin": "^14.0.0",
     "lucide-react": "^0.553.0",
     "motion": "^12.23.24",
     "next": "^15.4.9",

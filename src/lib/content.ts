@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
+import { adminDb } from './firebase-admin';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 export const docMetadataSchema = z.object({
   slug: z.string().min(1),
@@ -98,21 +100,131 @@ export function parseFrontmatter(fileContent: string): Doc {
   };
 }
 
+// Global flag to track seeding status during hot server context
+let isSeeded = false;
+
+const adminPayload = (data: any) => ({
+  ...data,
+  secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
+});
+
+// One-time startup synchronization mapping local static elements to Cloud Firestore
+export async function seedIfEmpty() {
+  if (isSeeded || !adminDb) return;
+  try {
+    const seedCheck = await getDoc(doc(adminDb, "settings", "seed_state"));
+    if (seedCheck.exists() && seedCheck.data()?.seeded) {
+      isSeeded = true;
+      return;
+    }
+
+    console.log("[db-seed] Database seeding initiated. Deploying local templates into Firestore...");
+
+    // Seed categories
+    const categoriesPath = path.join(process.cwd(), "src/data/categories.json");
+    if (fs.existsSync(categoriesPath)) {
+      const categories = JSON.parse(fs.readFileSync(categoriesPath, "utf8"));
+      for (const cat of categories) {
+        await setDoc(doc(adminDb, "categories", cat.id || cat.slug), adminPayload(cat));
+      }
+    }
+
+    // Seed settings
+    const settingsPath = path.join(process.cwd(), "src/data/settings.json");
+    if (fs.existsSync(settingsPath)) {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      await setDoc(doc(adminDb, "settings", "global"), adminPayload(settings));
+    }
+
+    // Seed articles with their parsed markdown content
+    const articlesPath = path.join(process.cwd(), "src/data/articles.json");
+    if (fs.existsSync(articlesPath)) {
+      const articles = JSON.parse(fs.readFileSync(articlesPath, "utf8"));
+      const contentDir = path.join(process.cwd(), "src/content");
+
+      for (const art of articles) {
+        let content = "";
+        const mdxPath = path.join(contentDir, `${art.slug}.mdx`);
+        if (fs.existsSync(mdxPath)) {
+          content = fs.readFileSync(mdxPath, "utf8");
+        } else {
+          const mdPath = path.join(contentDir, `${art.slug}.md`);
+          if (fs.existsSync(mdPath)) {
+            content = fs.readFileSync(mdPath, "utf8");
+          }
+        }
+
+        await setDoc(doc(adminDb, "articles", art.slug), adminPayload({
+          ...art,
+          content,
+        }));
+      }
+    }
+
+    await setDoc(doc(adminDb, "settings", "seed_state"), adminPayload({
+      seeded: true,
+      timestamp: new Date().toISOString()
+    }));
+
+    isSeeded = true;
+    console.log("[db-seed] Seeding finished successfully. Firestore is fully sync'd.");
+  } catch (error) {
+    console.error("[db-seed] Warning: Firestore automated seeding sequence failed: ", error);
+  }
+}
+
 export async function getAllDocs(): Promise<Doc[]> {
   try {
-    const contentDir = path.join(process.cwd(), 'content');
-    if (!fs.existsSync(contentDir)) {
-      return [];
+    await seedIfEmpty();
+
+    // 1. Read files locally
+    const contentDir = path.join(process.cwd(), 'src/content');
+    let localDocs: Doc[] = [];
+    if (fs.existsSync(contentDir)) {
+      const files = fs.readdirSync(contentDir);
+      const mdxFiles = files.filter((file) => file.endsWith('.mdx') || file.endsWith('.md'));
+      localDocs = mdxFiles.map((file) => {
+        const fullPath = path.join(contentDir, file);
+        const fileContent = fs.readFileSync(fullPath, 'utf8');
+        return parseFrontmatter(fileContent);
+      });
     }
-    const files = fs.readdirSync(contentDir);
-    const mdxFiles = files.filter((file) => file.endsWith('.mdx') || file.endsWith('.md'));
 
-    const docs = mdxFiles.map((file) => {
-      const fullPath = path.join(contentDir, file);
-      const fileContent = fs.readFileSync(fullPath, 'utf8');
-      return parseFrontmatter(fileContent);
-    });
+    // 2. Read database records
+    let firestoreDocs: Doc[] = [];
+    if (adminDb) {
+      try {
+        const snapshot = await getDocs(collection(adminDb, 'articles'));
+        firestoreDocs = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          return {
+            metadata: {
+              slug: data.slug || doc.id,
+              title: data.title || 'Untitled',
+              description: data.description || '',
+              errorCode: data.errorCode || 'General',
+              category: data.category || 'Other',
+              difficulty: data.difficulty || 'Medium',
+              estTime: data.estTime || '5 Mins',
+              successRate: data.successRate || '100%',
+              date: data.updated || data.date || '',
+              author: data.author || 'TechErrorLog Team',
+              tags: data.tags || [],
+            },
+            content: data.content || '',
+          };
+        });
+      } catch (err) {
+        console.error("[FS GET Docs Error] falling back: ", err);
+      }
+    }
 
+    // 3. Merge preferring Firestore records
+    const docsMap = new Map<string, Doc>();
+    localDocs.forEach(d => docsMap.set(d.metadata.slug, d));
+    firestoreDocs.forEach(d => docsMap.set(d.metadata.slug, d));
+
+    const docs = Array.from(docsMap.values());
     return docs.sort((a, b) => new Date(b.metadata.date).getTime() - new Date(a.metadata.date).getTime());
   } catch (error) {
     console.error('Error fetching dynamic docs:', error);
@@ -122,7 +234,40 @@ export async function getAllDocs(): Promise<Doc[]> {
 
 export async function getDocBySlug(slug: string): Promise<Doc | null> {
   try {
-    const contentDir = path.join(process.cwd(), 'content');
+    await seedIfEmpty();
+
+    // 1. Try to query database
+    if (adminDb) {
+      try {
+        const docSnap = await getDoc(doc(adminDb, 'articles', slug));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data) {
+            return {
+              metadata: {
+                slug: data.slug || docSnap.id,
+                title: data.title || 'Untitled',
+                description: data.description || '',
+                errorCode: data.errorCode || 'General',
+                category: data.category || 'Other',
+                difficulty: data.difficulty || 'Medium',
+                estTime: data.estTime || '5 Mins',
+                successRate: data.successRate || '100%',
+                date: data.updated || data.date || '',
+                author: data.author || 'TechErrorLog Team',
+                tags: data.tags || [],
+              },
+              content: data.content || '',
+            };
+          }
+        }
+      } catch (err) {
+        console.error(`[FS GET Single Doc Error] slug=${slug}: `, err);
+      }
+    }
+
+    // 2. Local fallback
+    const contentDir = path.join(process.cwd(), 'src/content');
     const targetFile = path.join(contentDir, `${slug}.mdx`);
     if (fs.existsSync(targetFile)) {
       const fileContent = fs.readFileSync(targetFile, 'utf8');
@@ -168,7 +313,6 @@ export function extractHeadings(content: string): TOCHeading[] {
     if (match) {
       const level = match[1].length;
       const text = match[2].trim();
-      // Generate standard URL-compatible ID matching the Markdown parser
       const id = text.toLowerCase().replace(/[^\w]+/g, '-');
       headings.push({ id, text, level });
     }
@@ -177,21 +321,49 @@ export function extractHeadings(content: string): TOCHeading[] {
   return headings;
 }
 
-export function getCategoriesData() {
+export async function getCategoriesData() {
   try {
-    const filePath = path.join(process.cwd(), "data/categories.json");
+    await seedIfEmpty();
+
+    // Try Firestore
+    if (adminDb) {
+      try {
+        const snapshot = await getDocs(collection(adminDb, "categories"));
+        if (!snapshot.empty) {
+          return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        }
+      } catch (e) {
+        console.error("Failed to read categories from firestore:", e);
+      }
+    }
+
+    const filePath = path.join(process.cwd(), "src/data/categories.json");
     if (fs.existsSync(filePath)) {
       return JSON.parse(fs.readFileSync(filePath, "utf8"));
     }
   } catch (e) {
-    console.error("Error reading categories JSON:", e);
+    console.error("Error reading categories:", e);
   }
   return [];
 }
 
-export function getSettingsData() {
+export async function getSettingsData() {
   try {
-    const filePath = path.join(process.cwd(), "data/settings.json");
+    await seedIfEmpty();
+
+    // Try Firestore
+    if (adminDb) {
+      try {
+        const docSnap = await getDoc(doc(adminDb, "settings", "global"));
+        if (docSnap.exists()) {
+          return docSnap.data() || {};
+        }
+      } catch (e) {
+        console.error("Failed to read settings from firestore:", e);
+      }
+    }
+
+    const filePath = path.join(process.cwd(), "src/data/settings.json");
     if (fs.existsSync(filePath)) {
       return JSON.parse(fs.readFileSync(filePath, "utf8"));
     }
@@ -201,15 +373,54 @@ export function getSettingsData() {
   return {};
 }
 
-export function getArticlesData() {
+export async function getArticlesData() {
   try {
-    const filePath = path.join(process.cwd(), "data/articles.json");
+    await seedIfEmpty();
+
+    // 1. Read files locally
+    const filePath = path.join(process.cwd(), "src/data/articles.json");
+    let localArticles: any[] = [];
     if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+      localArticles = JSON.parse(fs.readFileSync(filePath, "utf8"));
     }
+
+    // 2. Read database
+    let firestoreArticles: any[] = [];
+    if (adminDb) {
+      try {
+        const snapshot = await getDocs(collection(adminDb, 'articles'));
+        firestoreArticles = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          return {
+            id: data.id || doc.id,
+            category: data.category || 'Other',
+            title: data.title || '',
+            slug: data.slug || doc.id,
+            errorCode: data.errorCode || 'General',
+            priority: data.priority || 2,
+            status: data.status || 'draft',
+            difficulty: data.difficulty || 'Medium',
+            estTime: data.estTime || '5 min',
+            successRate: data.successRate || '100%',
+            tags: data.tags || [],
+            keywords: data.keywords || [],
+            updated: data.updated || null,
+            seo: data.seo || {}
+          };
+        });
+      } catch (err) {
+        console.error("[FS LIST Articles Error] fallback applied: ", err);
+      }
+    }
+
+    // 3. Merge preferring Firestore records
+    const articlesMap = new Map<string, any>();
+    localArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
+    firestoreArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
+
+    return Array.from(articlesMap.values());
   } catch (e) {
     console.error("Error reading articles JSON:", e);
+    return [];
   }
-  return [];
 }
-

@@ -14,7 +14,7 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  const registeredArticles = getArticlesData();
+  const registeredArticles = await getArticlesData();
   const publishedSlugs = registeredArticles
     .filter((a: any) => a.status === 'published')
     .map((a: any) => a.slug);
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
   
   // Cross-reference with the master dynamic registry to prevent metadata indexing of deleted/draft items
-  const registeredArticles = getArticlesData();
+  const registeredArticles = await getArticlesData();
   const isActive = registeredArticles.some((a: any) => a.slug === slug && a.status === 'published');
   if (!isActive) return {};
 
@@ -67,7 +67,7 @@ export default async function BlogPage({ params }: PageProps) {
   const { slug } = await params;
   
   // Cross-reference with the master dynamic registry to prevent direct URLs or indexing of draft/deleted items
-  const registeredArticles = getArticlesData();
+  const registeredArticles = await getArticlesData();
   const isActive = registeredArticles.some((a: any) => a.slug === slug && a.status === 'published');
   
   if (!isActive) {

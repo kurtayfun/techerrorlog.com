@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "No documents found to link.", linkedCount: 0 });
     }
 
-    const contentDir = path.join(process.cwd(), "content");
+    const contentDir = path.join(process.cwd(), "src/content");
     let totalReplacements = 0;
     const modifiedFiles: string[] = [];
 

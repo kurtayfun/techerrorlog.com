@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "article": {
+      "title": "Article",
+      "description": "A technical error guide or troubleshooting document published on techerrorlog.com",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "errorCode": { "type": "string" },
+        "priority": { "type": "integer" },
+        "status": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "estTime": { "type": "string" },
+        "successRate": { "type": "string" },
+        "tags": { "type": "array" },
+        "keywords": { "type": "array" },
+        "updated": { "type": "string", "format": "date-time" },
+        "seo": { "type": "object" },
+        "content": { "type": "string" }
+      },
+      "required": ["slug", "title", "category", "content", "status"]
+    },
+    "category": {
+      "title": "Category",
+      "description": "Blog categories such as BSOD, DLL errors, Windows Update, etc.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" }
+      },
+      "required": ["slug", "name"]
+    },
+    "setting": {
+      "title": "Setting",
+      "description": "Global settings for the website or admin panels",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string" },
+        "siteDescription": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "socialLinks": { "type": "object" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["siteName"]
+    }
+  },
+  "firestore": {
+    "/articles/{articleSlug}": {
+      "schema": "article",
+      "description": "Dynamic blog posts indexed by their slug"
+    },
+    "/categories/{categoryId}": {
+      "schema": "category",
+      "description": "Category data indexed by their unique ID or slug"
+    },
+    "/settings/{settingsId}": {
+      "schema": "setting",
+      "description": "Global site settings documents"
+    }
+  }
+}
