@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "if [ -d src/app/api ]; then mv src/app/api src/app-api-temp; fi; if [ -d src/app/feed.xml ]; then mv src/app/feed.xml src/app-feed-temp; fi; next build; if [ -d src/app-api-temp ]; then mv src/app-api-temp src/app/api; fi; if [ -d src/app-feed-temp ]; then mv src/app-feed-temp src/app/feed.xml; fi",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
