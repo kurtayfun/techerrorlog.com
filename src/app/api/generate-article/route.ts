@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { adminDb, firebaseAdminDb } from "@/lib/firebase-admin";
 import { doc, setDoc } from "firebase/firestore/lite";
-import { getSettingsData } from "@/lib/content";
+import { getSettingsData, getPromptsData } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -222,28 +222,25 @@ export async function POST(req: NextRequest) {
     const ai = await getAiClient();
     const slugName = generateSlug(title);
 
-    // Try to load system instruction from prompts.json, otherwise fallback
+    // Try to load system instruction from prompts database, otherwise fallback
     let systemInstruction = "";
     try {
-      const promptsPath = path.join(process.cwd(), "src/data/prompts.json");
-      if (fs.existsSync(promptsPath)) {
-        const promptsObj = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
-        if (promptsObj && promptsObj.systemInstruction) {
-          systemInstruction = promptsObj.systemInstruction
-            .replace(/{language_label}/g, "English (English)")
-            .replace(/{slugName}/g, slugName)
-            .replace(/{title}/g, title)
-            .replace(/{categoryName}/g, category)
-            .replace(/{difficulty}/g, "Medium")
-            .replace(/{estTime}/g, "10 min")
-            .replace(/{successRate}/g, "95%")
-            .replace(/{dateName}/g, new Date().toISOString().slice(0, 10))
-            .replace(/{authorName}/g, "TechErrorLog Team")
-            .replace(/{description_placeholder}/g, `Resolve ${title} issues using our comprehensive troubleshooting manual.`);
-        }
+      const promptsObj = await getPromptsData();
+      if (promptsObj && promptsObj.systemInstruction) {
+        systemInstruction = promptsObj.systemInstruction
+          .replace(/{language_label}/g, "English (English)")
+          .replace(/{slugName}/g, slugName)
+          .replace(/{title}/g, title)
+          .replace(/{categoryName}/g, category)
+          .replace(/{difficulty}/g, "Medium")
+          .replace(/{estTime}/g, "10 min")
+          .replace(/{successRate}/g, "95%")
+          .replace(/{dateName}/g, new Date().toISOString().slice(0, 10))
+          .replace(/{authorName}/g, "TechErrorLog Team")
+          .replace(/{description_placeholder}/g, `Resolve ${title} issues using our comprehensive troubleshooting manual.`);
       }
     } catch (e) {
-      console.error("Failed to read system prompt from prompts.json, using fallback: ", e);
+      console.error("Failed to read system prompt from prompts database, using fallback: ", e);
     }
 
     if (!systemInstruction) {

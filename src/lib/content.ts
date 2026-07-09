@@ -139,6 +139,13 @@ export async function seedIfEmpty() {
         await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(settings), { merge: true });
       }
 
+      // Seed prompts
+      const promptsPath = path.join(process.cwd(), "src/data/prompts.json");
+      if (fs.existsSync(promptsPath)) {
+        const prompts = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
+        await firebaseAdminDb.collection("settings").doc("prompts").set(adminPayload(prompts), { merge: true });
+      }
+
       // Seed articles with their parsed markdown content
       const articlesPath = path.join(process.cwd(), "src/data/articles.json");
       if (fs.existsSync(articlesPath)) {
@@ -200,6 +207,12 @@ export async function seedIfEmpty() {
       if (fs.existsSync(settingsPath)) {
         const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
         await setDoc(doc(adminDb, "settings", "global"), adminPayload(settings));
+      }
+
+      const promptsPath = path.join(process.cwd(), "src/data/prompts.json");
+      if (fs.existsSync(promptsPath)) {
+        const prompts = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
+        await setDoc(doc(adminDb, "settings", "prompts"), adminPayload(prompts));
       }
 
       const articlesPath = path.join(process.cwd(), "src/data/articles.json");
@@ -452,12 +465,28 @@ export async function getCategoriesData() {
   try {
     await seedIfEmpty();
 
+    // Read local categories first to determine which ones are active
+    let allowedIds: string[] = [];
+    const filePath = path.join(process.cwd(), "src/data/categories.json");
+    if (fs.existsSync(filePath)) {
+      try {
+        const localCats = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        allowedIds = localCats.map((c: any) => c.id || c.slug);
+      } catch (e) {
+        console.error("Failed to read local categories.json:", e);
+      }
+    }
+
     // Try Firestore Admin first
     if (firebaseAdminDb) {
       try {
         const snapshot = await firebaseAdminDb.collection("categories").get();
         if (!snapshot.empty) {
-          return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+          const docs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+          if (allowedIds.length > 0) {
+            return docs.filter((doc: any) => allowedIds.includes(doc.id) || allowedIds.includes(doc.slug));
+          }
+          return docs;
         }
       } catch (e: any) {
         console.warn("Failed to read categories via Admin SDK:", e.message);
@@ -469,14 +498,17 @@ export async function getCategoriesData() {
       try {
         const snapshot = await getDocs(collection(adminDb, "categories"));
         if (!snapshot.empty) {
-          return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+          const docs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+          if (allowedIds.length > 0) {
+            return docs.filter((doc: any) => allowedIds.includes(doc.id) || allowedIds.includes(doc.slug));
+          }
+          return docs;
         }
       } catch (e) {
         console.error("Failed to read categories from firestore:", e);
       }
     }
 
-    const filePath = path.join(process.cwd(), "src/data/categories.json");
     if (fs.existsSync(filePath)) {
       return JSON.parse(fs.readFileSync(filePath, "utf8"));
     }
@@ -520,6 +552,48 @@ export async function getSettingsData() {
     }
   } catch (e) {
     console.error("Error reading settings JSON:", e);
+  }
+  return {};
+}
+
+export async function getPromptsData() {
+  try {
+    await seedIfEmpty();
+
+    // Try Firestore Admin first
+    if (firebaseAdminDb) {
+      try {
+        const docSnap = await firebaseAdminDb.collection("settings").doc("prompts").get();
+        if (docSnap.exists) {
+          return docSnap.data() || {};
+        }
+      } catch (e: any) {
+        console.warn("Failed to read prompts via Admin SDK:", e.message);
+      }
+    }
+
+    // Try Firestore Client second
+    if (adminDb) {
+      try {
+        const docSnap = await getDoc(doc(adminDb, "settings", "prompts"));
+        if (docSnap.exists()) {
+          return docSnap.data() || {};
+        }
+      } catch (e) {
+        console.error("Failed to read prompts from firestore:", e);
+      }
+    }
+
+    const filePath = path.join(process.cwd(), "src/data/prompts.json");
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    }
+  } catch (e) {
+    console.error("Error reading prompts JSON:", e);
+  }
+  const defaultPromptPath = path.join(process.cwd(), "src/data/prompts.json");
+  if (fs.existsSync(defaultPromptPath)) {
+    return JSON.parse(fs.readFileSync(defaultPromptPath, "utf8"));
   }
   return {};
 }

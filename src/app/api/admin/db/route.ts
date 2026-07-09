@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { adminDb, firebaseAdminDb } from "@/lib/firebase-admin";
 import { doc, setDoc } from "firebase/firestore/lite";
-import { getArticlesData, getCategoriesData, getSettingsData } from "@/lib/content";
+import { getArticlesData, getCategoriesData, getSettingsData, getPromptsData } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +57,8 @@ export async function GET(req: NextRequest) {
           data.adminPassword = "••••••••••••••••";
         }
       }
+    } else if (type === "prompts") {
+      data = await getPromptsData();
     } else {
       // Fallback for types not stored directly in Firestore collections yet
       const filePath = getFilePath(type);
@@ -138,6 +140,8 @@ export async function POST(req: NextRequest) {
           }
         } else if (type === "settings") {
           await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(finalData), { merge: true });
+        } else if (type === "prompts") {
+          await firebaseAdminDb.collection("settings").doc("prompts").set(adminPayload(finalData), { merge: true });
         } else if (type === "internal_links") {
           await firebaseAdminDb.collection("settings").doc("internal_links").set(adminPayload({ links: data }), { merge: true });
         }
@@ -164,6 +168,8 @@ export async function POST(req: NextRequest) {
           }
         } else if (type === "settings") {
           await setDoc(doc(adminDb, "settings", "global"), adminPayload(finalData), { merge: true });
+        } else if (type === "prompts") {
+          await setDoc(doc(adminDb, "settings", "prompts"), adminPayload(finalData), { merge: true });
         } else if (type === "internal_links") {
           // Double down and save list of links too
           await setDoc(doc(adminDb, "settings", "internal_links"), adminPayload({ links: data }));
