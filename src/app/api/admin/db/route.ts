@@ -68,13 +68,16 @@ export async function POST(req: NextRequest) {
     const filePath = getFilePath(type);
     
     // Ensure parent dir exists (should be src/data)
-    const dirPath = path.dirname(filePath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
+    try {
+      const dirPath = path.dirname(filePath);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+      // Write to local JSON file for resilience and local fallbacks
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+    } catch (fsWriteErr: any) {
+      console.warn(`[Local FS Write Warning] Failed to write local JSON file ${filePath} in this environment (expected and non-critical on live serverless environments):`, fsWriteErr.message);
     }
-
-    // Write to local JSON file for resilience and local fallbacks
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
 
     // Mirror to Cloud Firestore database permanently
     let writeSucceeded = false;

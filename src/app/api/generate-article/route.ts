@@ -38,6 +38,63 @@ function generateSlug(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+// Map categories to beautiful default tags
+function getDefaultTags(category: string, errorCode: string): string[] {
+  const catClean = category.toLowerCase();
+  let tags = ["windows"];
+  
+  if (catClean.includes("update")) {
+    tags.push("update", "system-repair");
+  } else if (catClean.includes("bsod") || catClean.includes("blue")) {
+    tags.push("bsod", "system-crash");
+  } else if (catClean.includes("dll") || catClean.includes("library")) {
+    tags.push("dll-error", "dependency");
+  } else if (catClean.includes("gaming") || catClean.includes("game")) {
+    tags.push("gaming-fix", "graphics");
+  } else if (catClean.includes("activation") || catClean.includes("license")) {
+    tags.push("activation", "licensing");
+  } else if (catClean.includes("driver") || catClean.includes("hardware")) {
+    tags.push("driver", "device-manager");
+  } else if (catClean.includes("performance") || catClean.includes("slow") || catClean.includes("usage")) {
+    tags.push("performance", "optimization");
+  } else {
+    tags.push("troubleshooting", "system-repair");
+  }
+
+  if (errorCode && errorCode !== "General") {
+    const cleanCode = errorCode.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+    if (cleanCode && !tags.includes(cleanCode)) {
+      tags.push(cleanCode);
+    }
+  }
+  return tags;
+}
+
+// Resilient extraction of tags from MDX content
+function extractTagsFromContent(mdxContent: string): string[] {
+  try {
+    const tagsMatch = mdxContent.match(/tags:\s*\[([^\]]+)\]/);
+    if (tagsMatch && tagsMatch[1]) {
+      return tagsMatch[1]
+        .split(",")
+        .map((t) => t.trim().replace(/['"\[\]]/g, ""))
+        .filter(Boolean);
+    }
+    
+    // Also check for tags: tag1, tag2 format
+    const tagsLineMatch = mdxContent.match(/tags:\s*([^\n]+)/);
+    if (tagsLineMatch && tagsLineMatch[1] && !tagsLineMatch[1].trim().startsWith("[")) {
+      return tagsLineMatch[1]
+        .split(",")
+        .map((t) => t.trim().replace(/['"\[\]]/g, ""))
+        .filter(Boolean);
+    }
+  } catch (e) {
+    console.error("Error parsing tags from frontmatter:", e);
+  }
+  return [];
+}
+
 // Resilient wrapper for Gemini content generation with retry and fallback
 async function generateContentWithRetry(
   ai: GoogleGenAI,
@@ -177,6 +234,7 @@ estTime: "(Estimated time to solve, e.g. 5-10 min, 15 min)"
 successRate: "(Expected success rate, e.g. 98%, 95%)"
 date: "${new Date().toISOString().slice(0, 10)}"
 author: "TechErrorLog Team"
+tags: [tag1, tag2, tag3] (Include between 3 to 5 relevant technical/troubleshooting tags, lowercase with hyphens, e.g., windows, update, registry, bsod)
 
 Ensure that there is a blank line after the closing frontmatter delimiter '---'.
 
@@ -229,12 +287,15 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
 
     // Attempt to write to content directory
     const contentDir = path.join(process.cwd(), "src/content");
-    if (!fs.existsSync(contentDir)) {
-      fs.mkdirSync(contentDir, { recursive: true });
-    }
-
     const filePath = path.join(contentDir, `${slugName}.mdx`);
-    fs.writeFileSync(filePath, mdxContent, "utf8");
+    try {
+      if (!fs.existsSync(contentDir)) {
+        fs.mkdirSync(contentDir, { recursive: true });
+      }
+      fs.writeFileSync(filePath, mdxContent, "utf8");
+    } catch (fsWriteErr: any) {
+      console.warn(`[Local FS Write Warning] Failed to write mdx file ${filePath} in this environment (this is expected and non-critical on live serverless host):`, fsWriteErr.message);
+    }
 
     // Extract errorCode from generated content or guess it
     let inferredErrorCode = "General";
@@ -253,6 +314,9 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
        console.error("Error inferring dynamic error code:", e);
     }
 
+    // Extract tags from generated content
+    const parsedTags = extractTagsFromContent(mdxContent);
+
     // UPDATE DATABASE (articles.json)
     const articlesPath = path.join(process.cwd(), "src/data/articles.json");
     if (fs.existsSync(articlesPath)) {
@@ -262,10 +326,12 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
 
         const index = articles.findIndex((a: any) => a.slug === slugName);
         if (index !== -1) {
-          // If already in DB, update status and timestamp
+          // If already in DB, update status, tags, and timestamp
           articles[index].status = "published";
           articles[index].updated = new Date().toISOString();
           articles[index].errorCode = articles[index].errorCode || inferredErrorCode;
+          const currentCategory = articles[index].category || category || "Other";
+          articles[index].tags = parsedTags.length > 0 ? parsedTags : (articles[index].tags && articles[index].tags.length > 0 ? articles[index].tags : getDefaultTags(currentCategory, articles[index].errorCode));
         } else {
           // Insert as new article entry
           const newId = articles.reduce((max: number, a: any) => a.id > max ? a.id : max, 0) + 1;
@@ -282,6 +348,8 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
           else if (catClean.includes("performance") || catClean.includes("slow") || catClean.includes("usage")) mappedCategory = "performance";
           else if (catClean.includes("troubleshoot") || catClean.includes("guide") || catClean.includes("safe mode")) mappedCategory = "troubleshooting";
 
+          const articleTags = parsedTags.length > 0 ? parsedTags : getDefaultTags(mappedCategory, inferredErrorCode);
+
           articles.push({
             id: newId,
             category: mappedCategory,
@@ -293,6 +361,7 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
             difficulty: "Medium",
             estTime: "10 min",
             successRate: "95%",
+            tags: articleTags,
             keywords: [inferredErrorCode, "fix", "error"],
             updated: new Date().toISOString(),
             seo: {
@@ -306,7 +375,12 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
             }
           });
         }
-        fs.writeFileSync(articlesPath, JSON.stringify(articles, null, 2), "utf8");
+        
+        try {
+          fs.writeFileSync(articlesPath, JSON.stringify(articles, null, 2), "utf8");
+        } catch (fsWriteErr: any) {
+          console.warn("[Local FS Write Warning] Failed to write to local articles.json (non-critical on live serverless host):", fsWriteErr.message);
+        }
 
         // Write the article metadata with full content directly into Cloud Firestore
         let syncSucceeded = false;

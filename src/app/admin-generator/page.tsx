@@ -45,6 +45,7 @@ interface ArticleMetadata {
   difficulty: string;
   estTime: string;
   successRate: string;
+  tags?: string[];
   keywords: string[];
   updated: string | null;
   seo?: {
@@ -302,6 +303,11 @@ export default function AdminGeneratorPage() {
       difficulty: newDifficulty,
       estTime: newEstTime,
       successRate: newSuccessRate,
+      tags: [
+        "windows",
+        newCategory,
+        newErrorCode && newErrorCode !== "General" ? newErrorCode.toLowerCase() : ""
+      ].filter(Boolean),
       keywords: [newErrorCode || "General", "windows", "repair"],
       updated: newStatus === "published" ? new Date().toISOString() : null,
       seo: {

@@ -600,7 +600,68 @@ export async function getArticlesData() {
     localArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
     firestoreArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
 
-    return Array.from(articlesMap.values());
+    const mergedArticles = Array.from(articlesMap.values());
+    let updatedAny = false;
+
+    // Local helper to map categories to beautiful default tags
+    const getRetroTags = (category: string, errorCode: string): string[] => {
+      const catClean = (category || "").toLowerCase();
+      let tags = ["windows"];
+      
+      if (catClean.includes("update")) {
+        tags.push("update", "system-repair");
+      } else if (catClean.includes("bsod") || catClean.includes("blue")) {
+        tags.push("bsod", "system-crash");
+      } else if (catClean.includes("dll") || catClean.includes("library")) {
+        tags.push("dll-error", "dependency");
+      } else if (catClean.includes("gaming") || catClean.includes("game")) {
+        tags.push("gaming-fix", "graphics");
+      } else if (catClean.includes("activation") || catClean.includes("license")) {
+        tags.push("activation", "licensing");
+      } else if (catClean.includes("driver") || catClean.includes("hardware")) {
+        tags.push("driver", "device-manager");
+      } else if (catClean.includes("performance") || catClean.includes("slow") || catClean.includes("usage")) {
+        tags.push("performance", "optimization");
+      } else {
+        tags.push("troubleshooting", "system-repair");
+      }
+
+      if (errorCode && errorCode !== "General") {
+        const cleanCode = errorCode.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+        if (cleanCode && !tags.includes(cleanCode)) {
+          tags.push(cleanCode);
+        }
+      }
+      return tags;
+    };
+
+    for (const art of mergedArticles) {
+      if (!art.tags || !Array.isArray(art.tags) || art.tags.length === 0) {
+        art.tags = getRetroTags(art.category, art.errorCode);
+        updatedAny = true;
+        console.log(`[Auto-Retrofitting Tags] Added tags to article "${art.slug}":`, art.tags);
+
+        // Sync back to Cloud Firestore
+        if (adminDb) {
+          try {
+            await setDoc(doc(adminDb, "articles", art.slug), adminPayload(art), { merge: true });
+          } catch (fsErr) {
+            console.error(`[Auto-Retrofitting Tags] Firestore sync failed for ${art.slug}:`, fsErr);
+          }
+        }
+      }
+    }
+
+    if (updatedAny) {
+      // Write the fully retrofitted collection back to the local database JSON resiliently
+      try {
+        fs.writeFileSync(filePath, JSON.stringify(mergedArticles, null, 2), "utf8");
+      } catch (fsWriteErr: any) {
+        console.warn("[Auto-Retrofitting Tags] Local JSON write failed (expected and non-critical on live serverless hosts):", fsWriteErr.message);
+      }
+    }
+
+    return mergedArticles;
   } catch (e) {
     console.error("Error reading articles JSON:", e);
     return [];
