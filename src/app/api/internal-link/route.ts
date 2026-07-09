@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { getAllDocs } from "@/lib/content";
+import { getAllDocs, getSettingsData } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // Admin password protection check
+    const authHeader = req.headers.get("Authorization");
+    const adminPassword = authHeader ? authHeader.replace("Bearer ", "").trim() : "";
+    const settingsData = await getSettingsData();
+    const correctPassword = settingsData?.adminPassword || "admin123";
+    if (adminPassword !== correctPassword) {
+      return NextResponse.json({ error: "Yetkisiz Giriş / Unauthorized" }, { status: 401 });
+    }
+
     const docs = await getAllDocs();
     if (docs.length === 0) {
       return NextResponse.json({ message: "No documents found to link.", linkedCount: 0 });

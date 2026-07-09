@@ -246,6 +246,7 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterQuery, setFilterQuery] = useState<string>('');
   const [selectedTag, setSelectedTag] = useState<string>('');
+  const [showAdminButton, setShowAdminButton] = useState<boolean>(false);
 
   // Local state for hydration of real-time Firebase data
   const [liveDocs, setLiveDocs] = useState(initialDocs || []);
@@ -253,15 +254,44 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
   const [liveArticles, setLiveArticles] = useState(articlesDb || []);
   const [liveSettings, setLiveSettings] = useState(settingsDb || {});
 
+  useEffect(() => {
+    // Check if they are already logged in
+    const pwd = sessionStorage.getItem("admin_password");
+    if (pwd) {
+      setTimeout(() => {
+        setShowAdminButton(true);
+      }, 0);
+    }
+
+    // Stealth keyboard trigger: press Ctrl+Shift+A (or Cmd+Shift+A) to toggle
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setShowAdminButton(prev => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   // Fetch real-time data on client mount to bypass server-side/build caches and CDN stale states
   useEffect(() => {
     async function hydrate() {
+      const pwd = sessionStorage.getItem("admin_password");
+      if (!pwd) {
+        // Standard visitor: server-rendered dynamic props are fully fresh
+        return;
+      }
       try {
         const timestamp = Date.now();
+        const headers = { "Authorization": `Bearer ${pwd}` };
         const [articlesRes, categoriesRes, settingsRes] = await Promise.all([
-          fetch(`/api/admin/db?type=articles&_t=${timestamp}`, { cache: "no-store" }).then(res => res.json()),
-          fetch(`/api/admin/db?type=categories&_t=${timestamp}`, { cache: "no-store" }).then(res => res.json()),
-          fetch(`/api/admin/db?type=settings&_t=${timestamp}`, { cache: "no-store" }).then(res => res.json()),
+          fetch(`/api/admin/db?type=articles&_t=${timestamp}`, { cache: "no-store", headers }).then(res => res.json()),
+          fetch(`/api/admin/db?type=categories&_t=${timestamp}`, { cache: "no-store", headers }).then(res => res.json()),
+          fetch(`/api/admin/db?type=settings&_t=${timestamp}`, { cache: "no-store", headers }).then(res => res.json()),
         ]);
 
         if (articlesRes.success && Array.isArray(articlesRes.data)) {
@@ -404,18 +434,32 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
     }));
   }, [liveDocs, liveCategories, liveArticles]);
 
-  // Extract all unique tags dynamically
+  // Extract all unique tags dynamically, sorted by popularity (frequency), limited to 12 tags
   const allTags = useMemo(() => {
-    const list = new Set<string>();
+    const counts: Record<string, number> = {};
     allCategories.forEach((category) => {
       category.guides.forEach((guide) => {
         if (guide.tags && Array.isArray(guide.tags)) {
-          guide.tags.forEach(t => list.add(t));
+          guide.tags.forEach((t) => {
+            counts[t] = (counts[t] || 0) + 1;
+          });
         }
       });
     });
-    return Array.from(list);
-  }, [allCategories]);
+    
+    // Sort tags by frequency (descending)
+    const sortedTags = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    
+    // Take top 12 tags
+    const topTags = sortedTags.slice(0, 12);
+    
+    // If there is currently a selected tag, and it's not in the top 12, append it
+    if (selectedTag && !topTags.includes(selectedTag)) {
+      topTags.push(selectedTag);
+    }
+    
+    return topTags;
+  }, [allCategories, selectedTag]);
 
   // Sychronize with header actions client-side
   useEffect(() => {
@@ -1060,15 +1104,17 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
       </main>
 
       {/* Admin Quick Entry Link Pill */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <Link 
-          href="/admin-generator" 
-          className="bg-slate-950 text-white font-extrabold text-xs px-4 py-2.5 rounded-full shadow-lg border border-slate-800 flex items-center gap-2 hover:bg-slate-900 hover:scale-105 transition-all select-none"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-          <span>Admin Generator</span>
-        </Link>
-      </div>
+      {showAdminButton && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <Link 
+            href="/admin-generator" 
+            className="bg-slate-950 text-white font-extrabold text-xs px-4 py-2.5 rounded-full shadow-lg border border-slate-800 flex items-center gap-2 hover:bg-slate-900 hover:scale-105 transition-all select-none"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+            <span>Admin Generator</span>
+          </Link>
+        </div>
+      )}
 
       <footer id="app-footer" className="bg-white border-t border-slate-100/90 py-6 text-center text-xs text-slate-400 font-mono mt-12 select-none">
         <div id="footer-inner" className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">

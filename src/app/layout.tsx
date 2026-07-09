@@ -25,7 +25,8 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${inter.variable} min-h-screen`} suppressHydrationWarning>
-      <head>
+      <head />
+      <body id="root-body" className="bg-slate-50 text-slate-700 font-sans min-h-screen transition-colors duration-200" suppressHydrationWarning>
         <script
           id="theme-initializer"
           dangerouslySetInnerHTML={{
@@ -52,7 +53,8 @@ export default async function RootLayout({
             `,
           }}
         />
-        {/* Google AdSense Script Tag */}
+        {children}
+        {/* Google AdSense Script Tag loaded via standard script tag to avoid 'data-nscript' warnings */}
         {adsenseEnabled && adsensePublisherId && (
           <script
             async
@@ -60,9 +62,6 @@ export default async function RootLayout({
             crossOrigin="anonymous"
           />
         )}
-      </head>
-      <body id="root-body" className="bg-slate-50 text-slate-700 font-sans min-h-screen transition-colors duration-200" suppressHydrationWarning>
-        {children}
       </body>
     </html>
   );

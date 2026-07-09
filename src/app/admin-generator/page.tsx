@@ -96,6 +96,13 @@ export default function AdminGeneratorPage() {
   const [activeTab, setActiveTab] = useState<"articles" | "bulk" | "categories" | "links" | "settings">("articles");
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Authentication States
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [pwdInput, setPwdInput] = useState<string>("");
+  const [authError, setAuthError] = useState<string>("");
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+
   // DB States
   const [articles, setArticles] = useState<ArticleMetadata[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
@@ -142,12 +149,18 @@ export default function AdminGeneratorPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   // Fetch Databases from API endpoint on load
-  const loadDatabase = async () => {
+  const loadDatabase = async (overridePwd?: string) => {
     setLoading(true);
     try {
+      const pwd = overridePwd || sessionStorage.getItem("admin_password") || "";
       const fetchJson = async (url: string) => {
         const separator = url.includes("?") ? "&" : "?";
-        const response = await fetch(`${url}${separator}_t=${Date.now()}`, { cache: "no-store" });
+        const response = await fetch(`${url}${separator}_t=${Date.now()}`, { 
+          cache: "no-store",
+          headers: {
+            "Authorization": `Bearer ${pwd}`
+          }
+        });
         if (!response.ok) {
           throw new Error(`HTTP Error ${response.status} fetching ${url}`);
         }
@@ -183,8 +196,51 @@ export default function AdminGeneratorPage() {
     }
   };
 
+  const handleLogin = async (typedPassword?: string) => {
+    const pwdToTry = typedPassword || pwdInput;
+    if (!pwdToTry) {
+      setAuthError("Lütfen bir şifre girin.");
+      return false;
+    }
+    
+    setAuthError("");
+    setIsVerifying(true);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pwdToTry })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        sessionStorage.setItem("admin_password", pwdToTry);
+        setIsAuthenticated(true);
+        loadDatabase(pwdToTry);
+        return true;
+      } else {
+        setAuthError(data.error || "Hatalı şifre!");
+        sessionStorage.removeItem("admin_password");
+        setIsAuthenticated(false);
+        return false;
+      }
+    } catch (e: any) {
+      setAuthError("Giriş doğrulanırken bir hata oluştu: " + e.message);
+      return false;
+    } finally {
+      setIsVerifying(false);
+      setAuthChecking(false);
+    }
+  };
+
   useEffect(() => {
-    loadDatabase();
+    const stored = sessionStorage.getItem("admin_password");
+    if (stored) {
+      handleLogin(stored);
+    } else {
+      setAuthChecking(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load States from localStorage on Mount
@@ -270,9 +326,13 @@ export default function AdminGeneratorPage() {
   // Save database modifications
   const saveDB = async (type: string, data: any) => {
     try {
+      const pwd = sessionStorage.getItem("admin_password") || "";
       const response = await fetch("/api/admin/db", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${pwd}`
+        },
         body: JSON.stringify({ type, data }),
       });
       const result = await response.json();
@@ -370,9 +430,13 @@ export default function AdminGeneratorPage() {
     setArticles(prev => prev.map(a => a.id === article.id ? { ...a, status: "generated" as any } : a));
     
     try {
+      const pwd = sessionStorage.getItem("admin_password") || "";
       const response = await fetch("/api/generate-article", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${pwd}`
+        },
         body: JSON.stringify({
           title: article.title,
           category: article.category,
@@ -493,9 +557,13 @@ export default function AdminGeneratorPage() {
       setBulkQueue([...mockQueue]);
 
       try {
+        const pwd = sessionStorage.getItem("admin_password") || "";
         const response = await fetch("/api/generate-article", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${pwd}`
+          },
           body: JSON.stringify({
             title: mockQueue[i].title,
             category: mockQueue[i].category,
@@ -540,7 +608,13 @@ export default function AdminGeneratorPage() {
     setIsLinking(true);
     setLinkingResult(null);
     try {
-      const res = await fetch("/api/internal-link", { method: "POST" });
+      const pwd = sessionStorage.getItem("admin_password") || "";
+      const res = await fetch("/api/internal-link", { 
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${pwd}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setLinkingResult({
@@ -585,6 +659,81 @@ export default function AdminGeneratorPage() {
     
     return sMatch && stMatch && catMatch;
   });
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs text-slate-500 font-medium">Yönetici yetkileri doğrulanıyor...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50/50 flex flex-col justify-center items-center px-4 font-sans">
+        <div className="w-full max-w-md bg-white border border-slate-200/85 rounded-2xl p-8 shadow-md">
+          <div className="flex flex-col items-center mb-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 text-blue-600 mb-4">
+              <Database className="w-6 h-6" />
+            </div>
+            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">SEO Yönetici Paneli</h1>
+            <p className="text-xs text-slate-500 mt-1 max-w-xs">
+              Sistem verilerini ve otomatik makale üretim beynini yönetmek için şifrenizi doğrulayın.
+            </p>
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Yönetici Şifresi</label>
+              <input
+                type="password"
+                placeholder="Şifreyi giriniz..."
+                value={pwdInput}
+                onChange={(e) => setPwdInput(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-lg px-3 py-2 text-sm text-slate-800 transition-all font-mono"
+                disabled={isVerifying}
+                autoFocus
+              />
+            </div>
+
+            {authError && (
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg text-rose-600 text-xs font-semibold leading-relaxed font-sans">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isVerifying}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-2 px-4 rounded-lg text-xs tracking-wide transition-all uppercase shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isVerifying ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Giriş Yapılıyor...</span>
+                </>
+              ) : (
+                <span>Giriş Yap</span>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-slate-150 flex justify-center">
+            <Link
+              href="/"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Ana Sayfaya Geri Dön</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans">
@@ -1504,8 +1653,22 @@ export default function AdminGeneratorPage() {
                             onChange={(e) => setSettings({...settings, geminiApiKey: e.target.value})}
                             className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-750 w-full font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                           />
-                          <p className="text-[10px] text-slate-450 leading-normal">
+                          <p className="text-[10px] text-slate-450 leading-normal mb-4">
                             Eğer canlı sunucuda (live host) <code>GEMINI_API_KEY</code> ortam değişkeni yüklü değilse, bu API anahtarı kullanılarak yazılar başarıyla üretilir. Güvenli şekilde maskelenerek saklanır.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500 block">Admin Giriş Şifresi</label>
+                          <input 
+                            type="password"
+                            placeholder="Admin paneline giriş şifresi..."
+                            value={settings.adminPassword || ""}
+                            onChange={(e) => setSettings({...settings, adminPassword: e.target.value})}
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-750 w-full font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                          />
+                          <p className="text-[10px] text-slate-450 leading-normal">
+                            Bu panel ve ilişkili API servislerini yetkisiz erişimden korumak için kullanılan şifre. Varsayılan değer: <code>admin123</code>.
                           </p>
                         </div>
 

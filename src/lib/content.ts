@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 import { adminDb, firebaseAdminDb } from './firebase-admin';
-import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore/lite';
 
 export const docMetadataSchema = z.object({
   slug: z.string().min(1),

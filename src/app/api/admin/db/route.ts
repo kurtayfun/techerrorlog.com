@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { adminDb, firebaseAdminDb } from "@/lib/firebase-admin";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore/lite";
 import { getArticlesData, getCategoriesData, getSettingsData } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,21 @@ const adminPayload = (data: any) => ({
   secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
 });
 
+async function verifyAdmin(req: NextRequest): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return false;
+  const password = authHeader.replace("Bearer ", "").trim();
+  const settings = await getSettingsData();
+  const correctPassword = settings?.adminPassword || "admin123";
+  return password === correctPassword;
+}
+
 export async function GET(req: NextRequest) {
   try {
+    if (!(await verifyAdmin(req))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "articles";
 
@@ -35,11 +48,14 @@ export async function GET(req: NextRequest) {
       data = await getCategoriesData();
     } else if (type === "settings") {
       data = await getSettingsData();
-      if (data && data.geminiApiKey) {
-        data = {
-          ...data,
-          geminiApiKey: "••••••••••••••••"
-        };
+      if (data) {
+        data = { ...data };
+        if (data.geminiApiKey) {
+          data.geminiApiKey = "••••••••••••••••";
+        }
+        if (data.adminPassword) {
+          data.adminPassword = "••••••••••••••••";
+        }
       }
     } else {
       // Fallback for types not stored directly in Firestore collections yet
@@ -60,6 +76,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await verifyAdmin(req))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { type, data } = await req.json();
 
     const allowedTypes = ["articles", "categories", "settings", "prompts", "authors", "internal_links"];
@@ -74,11 +94,14 @@ export async function POST(req: NextRequest) {
     let finalData = data;
     if (type === "settings") {
       const currentSettings = await getSettingsData();
+      finalData = { ...data };
+      
       if (data.geminiApiKey === "••••••••••••••••") {
-        finalData = {
-          ...data,
-          geminiApiKey: currentSettings.geminiApiKey || ""
-        };
+        finalData.geminiApiKey = currentSettings.geminiApiKey || "";
+      }
+      
+      if (data.adminPassword === "••••••••••••••••") {
+        finalData.adminPassword = currentSettings.adminPassword || "admin123";
       }
     }
 

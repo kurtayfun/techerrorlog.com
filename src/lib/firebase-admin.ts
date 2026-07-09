@@ -1,5 +1,5 @@
 import { initializeApp as initClientApp, getApps as getClientApps, getApp as getClientApp } from "firebase/app";
-import { getFirestore as getClientFirestore } from "firebase/firestore";
+import { getFirestore as getClientFirestore } from "firebase/firestore/lite";
 import firebaseConfig from "../../firebase-applet-config.json";
 
 // Build configuration dynamically using environment variables first, falling back to JSON config.
