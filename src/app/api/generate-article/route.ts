@@ -317,6 +317,47 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
     // Extract tags from generated content
     const parsedTags = extractTagsFromContent(mdxContent);
 
+    // Map category nicely
+    let mappedCategory = "windows-update";
+    const catClean = category.toLowerCase();
+    if (catClean.includes("update")) mappedCategory = "windows-update";
+    else if (catClean.includes("bsod") || catClean.includes("blue")) mappedCategory = "bsod";
+    else if (catClean.includes("dll") || catClean.includes("library")) mappedCategory = "dll";
+    else if (catClean.includes("gaming") || catClean.includes("game")) mappedCategory = "gaming";
+    else if (catClean.includes("activation") || catClean.includes("license")) mappedCategory = "activation";
+    else if (catClean.includes("driver") || catClean.includes("hardware")) mappedCategory = "driver";
+    else if (catClean.includes("performance") || catClean.includes("slow") || catClean.includes("usage")) mappedCategory = "performance";
+    else if (catClean.includes("troubleshoot") || catClean.includes("guide") || catClean.includes("safe mode")) mappedCategory = "troubleshooting";
+
+    const articleTags = parsedTags.length > 0 ? parsedTags : getDefaultTags(mappedCategory, inferredErrorCode);
+
+    const fallbackMetadata = {
+      id: Date.now(), // Fallback unique ID
+      category: mappedCategory,
+      title,
+      slug: slugName,
+      errorCode: inferredErrorCode,
+      priority: 2,
+      status: "published",
+      difficulty: "Medium",
+      estTime: "10 min",
+      successRate: "95%",
+      tags: articleTags,
+      keywords: [inferredErrorCode, "fix", "error"],
+      updated: new Date().toISOString(),
+      seo: {
+        meta_title: `How to Fix ${title} | TechErrorLog`,
+        meta_description: `Learn how to diagnose and resolve ${title} issues using our professional, step-by-step troubleshooting playbook.`,
+        canonical: `https://techerrorlog.com/blog/${slugName}`,
+        focus_keyword: inferredErrorCode,
+        schema_type: "TechArticle",
+        og_title: `Resolve ${title}`,
+        og_description: `Complete diagnostic playbook for fixing ${title} errors.`
+      }
+    };
+
+    let savedMetadata: any = null;
+
     // UPDATE DATABASE (articles.json)
     const articlesPath = path.join(process.cwd(), "src/data/articles.json");
     if (fs.existsSync(articlesPath)) {
@@ -332,48 +373,16 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
           articles[index].errorCode = articles[index].errorCode || inferredErrorCode;
           const currentCategory = articles[index].category || category || "Other";
           articles[index].tags = parsedTags.length > 0 ? parsedTags : (articles[index].tags && articles[index].tags.length > 0 ? articles[index].tags : getDefaultTags(currentCategory, articles[index].errorCode));
+          savedMetadata = articles[index];
         } else {
           // Insert as new article entry
           const newId = articles.reduce((max: number, a: any) => a.id > max ? a.id : max, 0) + 1;
-          
-          // Map category nicely
-          let mappedCategory = "windows-update";
-          const catClean = category.toLowerCase();
-          if (catClean.includes("update")) mappedCategory = "windows-update";
-          else if (catClean.includes("bsod") || catClean.includes("blue")) mappedCategory = "bsod";
-          else if (catClean.includes("dll") || catClean.includes("library")) mappedCategory = "dll";
-          else if (catClean.includes("gaming") || catClean.includes("game")) mappedCategory = "gaming";
-          else if (catClean.includes("activation") || catClean.includes("license")) mappedCategory = "activation";
-          else if (catClean.includes("driver") || catClean.includes("hardware")) mappedCategory = "driver";
-          else if (catClean.includes("performance") || catClean.includes("slow") || catClean.includes("usage")) mappedCategory = "performance";
-          else if (catClean.includes("troubleshoot") || catClean.includes("guide") || catClean.includes("safe mode")) mappedCategory = "troubleshooting";
-
-          const articleTags = parsedTags.length > 0 ? parsedTags : getDefaultTags(mappedCategory, inferredErrorCode);
-
-          articles.push({
-            id: newId,
-            category: mappedCategory,
-            title,
-            slug: slugName,
-            errorCode: inferredErrorCode,
-            priority: 2,
-            status: "published",
-            difficulty: "Medium",
-            estTime: "10 min",
-            successRate: "95%",
-            tags: articleTags,
-            keywords: [inferredErrorCode, "fix", "error"],
-            updated: new Date().toISOString(),
-            seo: {
-              meta_title: `How to Fix ${title} | TechErrorLog`,
-              meta_description: `Learn how to diagnose and resolve ${title} issues using our professional, step-by-step troubleshooting playbook.`,
-              canonical: `https://techerrorlog.com/blog/${slugName}`,
-              focus_keyword: inferredErrorCode,
-              schema_type: "TechArticle",
-              og_title: `Resolve ${title}`,
-              og_description: `Complete diagnostic playbook for fixing ${title} errors.`
-            }
-          });
+          const newArticle = {
+            ...fallbackMetadata,
+            id: newId
+          };
+          articles.push(newArticle);
+          savedMetadata = newArticle;
         }
         
         try {
@@ -381,41 +390,43 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
         } catch (fsWriteErr: any) {
           console.warn("[Local FS Write Warning] Failed to write to local articles.json (non-critical on live serverless host):", fsWriteErr.message);
         }
-
-        // Write the article metadata with full content directly into Cloud Firestore
-        let syncSucceeded = false;
-        const metaIndex = articles.findIndex((a: any) => a.slug === slugName);
-        const savedMetadata = metaIndex !== -1 ? articles[metaIndex] : articles[articles.length - 1];
-
-        if (firebaseAdminDb) {
-          try {
-            await firebaseAdminDb.collection("articles").doc(slugName).set({
-              ...savedMetadata,
-              content: mdxContent,
-              secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
-            }, { merge: true });
-            syncSucceeded = true;
-            console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore via Admin SDK.`);
-          } catch (adminErr: any) {
-            console.warn(`[FS Sync Admin Warn] Could not save generated article ${slugName} via Admin SDK, falling back:`, adminErr.message);
-          }
-        }
-
-        if (!syncSucceeded && adminDb) {
-          try {
-            await setDoc(doc(adminDb, "articles", slugName), {
-              ...savedMetadata,
-              content: mdxContent,
-              secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
-            });
-            syncSucceeded = true;
-            console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore via Client SDK.`);
-          } catch (fsErr) {
-            console.error(`[FS Sync Fail] Could not save generated article ${slugName} to Firestore:`, fsErr);
-          }
-        }
       } catch (err) {
         console.error("Failed to update articles.json db:", err);
+      }
+    }
+
+    if (!savedMetadata) {
+      savedMetadata = fallbackMetadata;
+    }
+
+    // Write the article metadata with full content directly into Cloud Firestore
+    let syncSucceeded = false;
+
+    if (firebaseAdminDb) {
+      try {
+        await firebaseAdminDb.collection("articles").doc(slugName).set({
+          ...savedMetadata,
+          content: mdxContent,
+          secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
+        }, { merge: true });
+        syncSucceeded = true;
+        console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore via Admin SDK.`);
+      } catch (adminErr: any) {
+        console.warn(`[FS Sync Admin Warn] Could not save generated article ${slugName} via Admin SDK, falling back:`, adminErr.message);
+      }
+    }
+
+    if (!syncSucceeded && adminDb) {
+      try {
+        await setDoc(doc(adminDb, "articles", slugName), {
+          ...savedMetadata,
+          content: mdxContent,
+          secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
+        });
+        syncSucceeded = true;
+        console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore via Client SDK.`);
+      } catch (fsErr) {
+        console.error(`[FS Sync Fail] Could not save generated article ${slugName} to Firestore:`, fsErr);
       }
     }
 
