@@ -81,6 +81,8 @@ interface SettingData {
   generationLanguageDefault: string;
   geminiModel: string;
   geminiApiKey?: string;
+  adsenseEnabled?: boolean;
+  adsensePublisherId?: string;
   lastUpdated: string;
 }
 
@@ -1444,6 +1446,38 @@ export default function AdminGeneratorPage() {
                             onChange={(e) => setSettings({...settings, description: e.target.value})}
                             className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 w-full h-24"
                           />
+                        </div>
+
+                        {/* Google AdSense Entegrasyonu */}
+                        <div className="pt-4 border-t border-slate-100 space-y-4">
+                          <span className="text-[10px] font-extrabold text-slate-450 block uppercase tracking-wider">Google AdSense Entegrasyonu</span>
+                          
+                          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-150">
+                            <div className="space-y-0.5">
+                              <span className="text-xs font-bold text-slate-800 block">Reklamları Aktifleştir</span>
+                              <span className="text-[10px] text-slate-450 leading-none">{"Sitedeki tüm reklam alanlarını ve Auto-Ads'i açar."}</span>
+                            </div>
+                            <input 
+                              type="checkbox"
+                              checked={!!settings.adsenseEnabled}
+                              onChange={(e) => setSettings({...settings, adsenseEnabled: e.target.checked})}
+                              className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-slate-500 block">Yayıncı Kimliği (AdSense Publisher ID)</label>
+                            <input 
+                              type="text"
+                              placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+                              value={settings.adsensePublisherId || ""}
+                              onChange={(e) => setSettings({...settings, adsensePublisherId: e.target.value})}
+                              className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-755 w-full font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                            />
+                            <p className="text-[9px] text-slate-450 leading-relaxed">
+                              Örn: <code>ca-pub-1234567890123456</code>. Reklamları kapatırsanız veya boş bırakırsanız, reklam alanlarında şık yer tutucular (placeholder) gösterilir.
+                            </p>
+                          </div>
                         </div>
                       </div>
 

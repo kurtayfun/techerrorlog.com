@@ -6,5 +6,7 @@
   "sitemapAutoUpdate": true,
   "generationLanguageDefault": "tr",
   "geminiModel": "gemini-3.5-flash",
+  "adsenseEnabled": false,
+  "adsensePublisherId": "",
   "lastUpdated": "2026-06-09T10:30:00Z"
 }

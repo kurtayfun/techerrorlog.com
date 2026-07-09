@@ -167,7 +167,7 @@ const baseCategories: Category[] = [
         difficulty: "EASY",
         estTime: "5 min",
         successRate: "98%",
-        slug: "windows-update-0x80070002",
+        slug: "tools-cleanmgr",
         description: "Remove temporary caching, previous installation backups and download repositories from drive sectors dynamically."
       }
     ]
@@ -185,7 +185,7 @@ const baseCategories: Category[] = [
         difficulty: "MEDIUM",
         estTime: "8 min",
         successRate: "94%",
-        slug: "windows-update-0x800f081f",
+        slug: "activation-0x803fa0675",
         description: "An unaligned activation token key was detected during Windows Server/Pro license synchronization routines."
       },
       {
@@ -194,7 +194,7 @@ const baseCategories: Category[] = [
         difficulty: "ADVANCED",
         estTime: "12 min",
         successRate: "90%",
-        slug: "windows-update-0x80070002",
+        slug: "activation-0xc004c003",
         description: "Resolve blocked or misaligned enterprise network product key allocations inside native KMS managers."
       }
     ]
@@ -212,7 +212,7 @@ const baseCategories: Category[] = [
         difficulty: "ADVANCED",
         estTime: "12 min",
         successRate: "94%",
-        slug: "bsod-0x000000d1",
+        slug: "driver-nvlddmkm",
         description: "Complete technical playbook addressing system registry watchdog metrics (TdrDelay) and clean driver builds to resolve direct nvlddmkm.sys GPU timeouts."
       },
       {
