@@ -440,7 +440,7 @@ export function extractHeadings(content: string): TOCHeading[] {
     if (match) {
       const level = match[1].length;
       const text = match[2].trim();
-      const id = text.toLowerCase().replace(/[^\w]+/g, '-');
+      const id = text.toLowerCase().replace(/[^\w]+/g, '-').replace(/^-+|-+$/g, '');
       headings.push({ id, text, level });
     }
   }
