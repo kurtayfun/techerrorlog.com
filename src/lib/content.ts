@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
-import { adminDb } from './firebase-admin';
+import { adminDb, firebaseAdminDb } from './firebase-admin';
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 export const docMetadataSchema = z.object({
@@ -110,66 +110,132 @@ const adminPayload = (data: any) => ({
 
 // One-time startup synchronization mapping local static elements to Cloud Firestore
 export async function seedIfEmpty() {
-  if (isSeeded || !adminDb) return;
-  try {
-    const seedCheck = await getDoc(doc(adminDb, "settings", "seed_state"));
-    if (seedCheck.exists() && seedCheck.data()?.seeded) {
-      isSeeded = true;
-      return;
-    }
+  if (isSeeded) return;
 
-    console.log("[db-seed] Database seeding initiated. Deploying local templates into Firestore...");
-
-    // Seed categories
-    const categoriesPath = path.join(process.cwd(), "src/data/categories.json");
-    if (fs.existsSync(categoriesPath)) {
-      const categories = JSON.parse(fs.readFileSync(categoriesPath, "utf8"));
-      for (const cat of categories) {
-        await setDoc(doc(adminDb, "categories", cat.id || cat.slug), adminPayload(cat));
+  // Try seeding via firebaseAdminDb first (Admin SDK)
+  if (firebaseAdminDb) {
+    try {
+      const seedCheck = await firebaseAdminDb.collection("settings").doc("seed_state").get();
+      if (seedCheck.exists && seedCheck.data()?.seeded) {
+        isSeeded = true;
+        return;
       }
-    }
 
-    // Seed settings
-    const settingsPath = path.join(process.cwd(), "src/data/settings.json");
-    if (fs.existsSync(settingsPath)) {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-      await setDoc(doc(adminDb, "settings", "global"), adminPayload(settings));
-    }
+      console.log("[db-seed] Database seeding initiated via Admin SDK. Deploying local templates into Firestore...");
 
-    // Seed articles with their parsed markdown content
-    const articlesPath = path.join(process.cwd(), "src/data/articles.json");
-    if (fs.existsSync(articlesPath)) {
-      const articles = JSON.parse(fs.readFileSync(articlesPath, "utf8"));
-      const contentDir = path.join(process.cwd(), "src/content");
-
-      for (const art of articles) {
-        let content = "";
-        const mdxPath = path.join(contentDir, `${art.slug}.mdx`);
-        if (fs.existsSync(mdxPath)) {
-          content = fs.readFileSync(mdxPath, "utf8");
-        } else {
-          const mdPath = path.join(contentDir, `${art.slug}.md`);
-          if (fs.existsSync(mdPath)) {
-            content = fs.readFileSync(mdPath, "utf8");
-          }
+      // Seed categories
+      const categoriesPath = path.join(process.cwd(), "src/data/categories.json");
+      if (fs.existsSync(categoriesPath)) {
+        const categories = JSON.parse(fs.readFileSync(categoriesPath, "utf8"));
+        for (const cat of categories) {
+          await firebaseAdminDb.collection("categories").doc(cat.id || cat.slug).set(adminPayload(cat), { merge: true });
         }
-
-        await setDoc(doc(adminDb, "articles", art.slug), adminPayload({
-          ...art,
-          content,
-        }));
       }
+
+      // Seed settings
+      const settingsPath = path.join(process.cwd(), "src/data/settings.json");
+      if (fs.existsSync(settingsPath)) {
+        const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+        await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(settings), { merge: true });
+      }
+
+      // Seed articles with their parsed markdown content
+      const articlesPath = path.join(process.cwd(), "src/data/articles.json");
+      if (fs.existsSync(articlesPath)) {
+        const articles = JSON.parse(fs.readFileSync(articlesPath, "utf8"));
+        const contentDir = path.join(process.cwd(), "src/content");
+
+        for (const art of articles) {
+          let content = "";
+          const mdxPath = path.join(contentDir, `${art.slug}.mdx`);
+          if (fs.existsSync(mdxPath)) {
+            content = fs.readFileSync(mdxPath, "utf8");
+          } else {
+            const mdPath = path.join(contentDir, `${art.slug}.md`);
+            if (fs.existsSync(mdPath)) {
+              content = fs.readFileSync(mdPath, "utf8");
+            }
+          }
+
+          await firebaseAdminDb.collection("articles").doc(art.slug).set(adminPayload({
+            ...art,
+            content,
+          }), { merge: true });
+        }
+      }
+
+      await firebaseAdminDb.collection("settings").doc("seed_state").set(adminPayload({
+        seeded: true,
+        timestamp: new Date().toISOString()
+      }));
+
+      isSeeded = true;
+      console.log("[db-seed] Seeding finished successfully via Admin SDK.");
+      return;
+    } catch (adminError: any) {
+      console.warn("[db-seed] Seeding failed with Admin SDK, falling back to Client Web SDK:", adminError.message);
     }
+  }
 
-    await setDoc(doc(adminDb, "settings", "seed_state"), adminPayload({
-      seeded: true,
-      timestamp: new Date().toISOString()
-    }));
+  // Fallback to client SDK (adminDb)
+  if (adminDb) {
+    try {
+      const seedCheck = await getDoc(doc(adminDb, "settings", "seed_state"));
+      if (seedCheck.exists() && seedCheck.data()?.seeded) {
+        isSeeded = true;
+        return;
+      }
 
-    isSeeded = true;
-    console.log("[db-seed] Seeding finished successfully. Firestore is fully sync'd.");
-  } catch (error) {
-    console.error("[db-seed] Warning: Firestore automated seeding sequence failed: ", error);
+      console.log("[db-seed] Database seeding initiated via Client Web SDK...");
+
+      const categoriesPath = path.join(process.cwd(), "src/data/categories.json");
+      if (fs.existsSync(categoriesPath)) {
+        const categories = JSON.parse(fs.readFileSync(categoriesPath, "utf8"));
+        for (const cat of categories) {
+          await setDoc(doc(adminDb, "categories", cat.id || cat.slug), adminPayload(cat));
+        }
+      }
+
+      const settingsPath = path.join(process.cwd(), "src/data/settings.json");
+      if (fs.existsSync(settingsPath)) {
+        const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+        await setDoc(doc(adminDb, "settings", "global"), adminPayload(settings));
+      }
+
+      const articlesPath = path.join(process.cwd(), "src/data/articles.json");
+      if (fs.existsSync(articlesPath)) {
+        const articles = JSON.parse(fs.readFileSync(articlesPath, "utf8"));
+        const contentDir = path.join(process.cwd(), "src/content");
+
+        for (const art of articles) {
+          let content = "";
+          const mdxPath = path.join(contentDir, `${art.slug}.mdx`);
+          if (fs.existsSync(mdxPath)) {
+            content = fs.readFileSync(mdxPath, "utf8");
+          } else {
+            const mdPath = path.join(contentDir, `${art.slug}.md`);
+            if (fs.existsSync(mdPath)) {
+              content = fs.readFileSync(mdPath, "utf8");
+            }
+          }
+
+          await setDoc(doc(adminDb, "articles", art.slug), adminPayload({
+            ...art,
+            content,
+          }));
+        }
+      }
+
+      await setDoc(doc(adminDb, "settings", "seed_state"), adminPayload({
+        seeded: true,
+        timestamp: new Date().toISOString()
+      }));
+
+      isSeeded = true;
+      console.log("[db-seed] Seeding finished successfully via Client Web SDK.");
+    } catch (error) {
+      console.error("[db-seed] Warning: Firestore automated seeding sequence failed: ", error);
+    }
   }
 }
 
@@ -192,16 +258,18 @@ export async function getAllDocs(): Promise<Doc[]> {
 
     // 2. Read database records
     let firestoreDocs: Doc[] = [];
-    if (adminDb) {
+    let fetchSucceeded = false;
+
+    if (firebaseAdminDb) {
       try {
-        const snapshot = await getDocs(collection(adminDb, 'articles'));
+        const snapshot = await firebaseAdminDb.collection('articles').get();
         firestoreDocs = snapshot.docs.map((doc: any) => {
           const data = doc.data();
           return {
             metadata: {
               slug: data.slug || doc.id,
               title: data.title || 'Untitled',
-              description: data.description || '',
+              description: data.seo?.meta_description || data.description || '',
               errorCode: data.errorCode || 'General',
               category: data.category || 'Other',
               difficulty: data.difficulty || 'Medium',
@@ -214,8 +282,37 @@ export async function getAllDocs(): Promise<Doc[]> {
             content: data.content || '',
           };
         });
+        fetchSucceeded = true;
+      } catch (err: any) {
+        console.warn("[FS GET Docs Error] Admin SDK failed, falling back to Client SDK:", err.message);
+      }
+    }
+
+    if (!fetchSucceeded && adminDb) {
+      try {
+        const snapshot = await getDocs(collection(adminDb, 'articles'));
+        firestoreDocs = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          return {
+            metadata: {
+              slug: data.slug || doc.id,
+              title: data.title || 'Untitled',
+              description: data.seo?.meta_description || data.description || '',
+              errorCode: data.errorCode || 'General',
+              category: data.category || 'Other',
+              difficulty: data.difficulty || 'Medium',
+              estTime: data.estTime || '5 Mins',
+              successRate: data.successRate || '100%',
+              date: data.updated || data.date || '',
+              author: data.author || 'TechErrorLog Team',
+              tags: data.tags || [],
+            },
+            content: data.content || '',
+          };
+        });
+        fetchSucceeded = true;
       } catch (err) {
-        console.error("[FS GET Docs Error] falling back: ", err);
+        console.error("[FS GET Docs Error] client SDK fallback failed too: ", err);
       }
     }
 
@@ -236,7 +333,37 @@ export async function getDocBySlug(slug: string): Promise<Doc | null> {
   try {
     await seedIfEmpty();
 
-    // 1. Try to query database
+    // 1. Try to query database using firebaseAdminDb
+    if (firebaseAdminDb) {
+      try {
+        const docSnap = await firebaseAdminDb.collection('articles').doc(slug).get();
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          if (data) {
+            return {
+              metadata: {
+                slug: data.slug || docSnap.id,
+                title: data.title || 'Untitled',
+                description: data.seo?.meta_description || data.description || '',
+                errorCode: data.errorCode || 'General',
+                category: data.category || 'Other',
+                difficulty: data.difficulty || 'Medium',
+                estTime: data.estTime || '5 Mins',
+                successRate: data.successRate || '100%',
+                date: data.updated || data.date || '',
+                author: data.author || 'TechErrorLog Team',
+                tags: data.tags || [],
+              },
+              content: data.content || '',
+            };
+          }
+        }
+      } catch (err: any) {
+        console.warn(`[FS GET Single Doc Error] slug=${slug} Admin SDK failed, falling back to Client SDK:`, err.message);
+      }
+    }
+
+    // Fallback to client SDK (adminDb)
     if (adminDb) {
       try {
         const docSnap = await getDoc(doc(adminDb, 'articles', slug));
@@ -247,7 +374,7 @@ export async function getDocBySlug(slug: string): Promise<Doc | null> {
               metadata: {
                 slug: data.slug || docSnap.id,
                 title: data.title || 'Untitled',
-                description: data.description || '',
+                description: data.seo?.meta_description || data.description || '',
                 errorCode: data.errorCode || 'General',
                 category: data.category || 'Other',
                 difficulty: data.difficulty || 'Medium',
@@ -293,7 +420,7 @@ export interface TOCHeading {
 
 export function extractHeadings(content: string): TOCHeading[] {
   const headings: TOCHeading[] = [];
-  const lines = content.split('\n');
+  const lines = (content || '').split('\n');
   let inCodeBlock = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -325,7 +452,19 @@ export async function getCategoriesData() {
   try {
     await seedIfEmpty();
 
-    // Try Firestore
+    // Try Firestore Admin first
+    if (firebaseAdminDb) {
+      try {
+        const snapshot = await firebaseAdminDb.collection("categories").get();
+        if (!snapshot.empty) {
+          return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        }
+      } catch (e: any) {
+        console.warn("Failed to read categories via Admin SDK:", e.message);
+      }
+    }
+
+    // Try Firestore Client second
     if (adminDb) {
       try {
         const snapshot = await getDocs(collection(adminDb, "categories"));
@@ -351,7 +490,19 @@ export async function getSettingsData() {
   try {
     await seedIfEmpty();
 
-    // Try Firestore
+    // Try Firestore Admin first
+    if (firebaseAdminDb) {
+      try {
+        const docSnap = await firebaseAdminDb.collection("settings").doc("global").get();
+        if (docSnap.exists) {
+          return docSnap.data() || {};
+        }
+      } catch (e: any) {
+        console.warn("Failed to read settings via Admin SDK:", e.message);
+      }
+    }
+
+    // Try Firestore Client second
     if (adminDb) {
       try {
         const docSnap = await getDoc(doc(adminDb, "settings", "global"));
@@ -386,7 +537,37 @@ export async function getArticlesData() {
 
     // 2. Read database
     let firestoreArticles: any[] = [];
-    if (adminDb) {
+    let fetchSucceeded = false;
+
+    if (firebaseAdminDb) {
+      try {
+        const snapshot = await firebaseAdminDb.collection('articles').get();
+        firestoreArticles = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          return {
+            id: data.id || doc.id,
+            category: data.category || 'Other',
+            title: data.title || '',
+            slug: data.slug || doc.id,
+            errorCode: data.errorCode || 'General',
+            priority: data.priority || 2,
+            status: data.status || 'draft',
+            difficulty: data.difficulty || 'Medium',
+            estTime: data.estTime || '5 min',
+            successRate: data.successRate || '100%',
+            tags: data.tags || [],
+            keywords: data.keywords || [],
+            updated: data.updated || null,
+            seo: data.seo || {}
+          };
+        });
+        fetchSucceeded = true;
+      } catch (err: any) {
+        console.warn("[FS LIST Articles Error] Admin SDK failed:", err.message);
+      }
+    }
+
+    if (!fetchSucceeded && adminDb) {
       try {
         const snapshot = await getDocs(collection(adminDb, 'articles'));
         firestoreArticles = snapshot.docs.map((doc: any) => {
@@ -408,6 +589,7 @@ export async function getArticlesData() {
             seo: data.seo || {}
           };
         });
+        fetchSucceeded = true;
       } catch (err) {
         console.error("[FS LIST Articles Error] fallback applied: ", err);
       }

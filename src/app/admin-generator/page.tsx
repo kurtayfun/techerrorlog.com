@@ -142,7 +142,8 @@ export default function AdminGeneratorPage() {
     setLoading(true);
     try {
       const fetchJson = async (url: string) => {
-        const response = await fetch(url);
+        const separator = url.includes("?") ? "&" : "?";
+        const response = await fetch(`${url}${separator}_t=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`HTTP Error ${response.status} fetching ${url}`);
         }
@@ -512,6 +513,11 @@ export default function AdminGeneratorPage() {
         mockQueue[i].error = err.message || "Failed dynamic build";
       }
       setBulkQueue([...mockQueue]);
+
+      // Introduce a 2-second delay between generations to avoid Gemini API rate limits (quota exhaustion)
+      if (i < mockQueue.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
     }
 
     setIsBulkProcessing(false);

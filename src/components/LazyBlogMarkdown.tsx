@@ -13,5 +13,5 @@ interface LazyBlogMarkdownProps {
 }
 
 export default function LazyBlogMarkdown({ content }: LazyBlogMarkdownProps) {
-  return <BlogMarkdown content={content} />;
+  return <BlogMarkdown content={content || ''} />;
 }

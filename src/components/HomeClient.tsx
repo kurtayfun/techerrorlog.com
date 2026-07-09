@@ -247,10 +247,65 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
   const [filterQuery, setFilterQuery] = useState<string>('');
   const [selectedTag, setSelectedTag] = useState<string>('');
 
-  // Dynamically map and merge initialDocs into category list
+  // Local state for hydration of real-time Firebase data
+  const [liveDocs, setLiveDocs] = useState(initialDocs || []);
+  const [liveCategories, setLiveCategories] = useState(categoriesDb || []);
+  const [liveArticles, setLiveArticles] = useState(articlesDb || []);
+  const [liveSettings, setLiveSettings] = useState(settingsDb || {});
+
+  // Fetch real-time data on client mount to bypass server-side/build caches and CDN stale states
+  useEffect(() => {
+    async function hydrate() {
+      try {
+        const timestamp = Date.now();
+        const [articlesRes, categoriesRes, settingsRes] = await Promise.all([
+          fetch(`/api/admin/db?type=articles&_t=${timestamp}`, { cache: "no-store" }).then(res => res.json()),
+          fetch(`/api/admin/db?type=categories&_t=${timestamp}`, { cache: "no-store" }).then(res => res.json()),
+          fetch(`/api/admin/db?type=settings&_t=${timestamp}`, { cache: "no-store" }).then(res => res.json()),
+        ]);
+
+        if (articlesRes.success && Array.isArray(articlesRes.data)) {
+          setLiveArticles(articlesRes.data);
+          
+          // Construct liveDocs from the live articles data
+          const mappedDocs = articlesRes.data.map((art: any) => ({
+            metadata: {
+              slug: art.slug,
+              title: art.title || 'Untitled',
+              description: art.seo?.meta_description || art.description || '',
+              errorCode: art.errorCode || 'General',
+              category: art.category || 'Other',
+              difficulty: art.difficulty || 'Medium',
+              estTime: art.estTime || '5 min',
+              successRate: art.successRate || '100%',
+              date: art.updated || art.date || '',
+              author: art.author || 'TechErrorLog Team',
+              tags: art.tags || [],
+            },
+            content: art.content || '',
+          }));
+          setLiveDocs(mappedDocs);
+        }
+        
+        if (categoriesRes.success && Array.isArray(categoriesRes.data)) {
+          setLiveCategories(categoriesRes.data);
+        }
+        
+        if (settingsRes.success && settingsRes.data) {
+          setLiveSettings(settingsRes.data);
+        }
+      } catch (err) {
+        console.error("Failed to hydrate client with real-time database data:", err);
+      }
+    }
+    
+    hydrate();
+  }, []);
+
+  // Dynamically map and merge liveDocs into category list
   const allCategories = useMemo(() => {
     // 1. Get raw categories from database or fallback to static defaults
-    const sourceCategories = (categoriesDb && categoriesDb.length > 0) ? categoriesDb : baseCategories;
+    const sourceCategories = (liveCategories && liveCategories.length > 0) ? liveCategories : baseCategories;
     
     // 2. Clone them, initializing guides to empty arrays
     const categoriesCopy = sourceCategories.map(cat => ({
@@ -258,8 +313,8 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
       guides: [] as Guide[]
     }));
 
-    // 3. Populate guides from articlesDb (the master JSON database) for entries with status === "published"
-    const activeArticles = articlesDb || [];
+    // 3. Populate guides from liveArticles (the master JSON database) for entries with status === "published"
+    const activeArticles = liveArticles || [];
     activeArticles.forEach((art) => {
       // Only include published articles on the user interface
       if (art.status !== "published") return;
@@ -295,8 +350,8 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
       'windows-update-0x800f081f'
     ];
 
-    // 4. Fallback/merge any dynamic directories/files directly in initialDocs in case we loaded an MDX file unregistered in the JSON database
-    initialDocs.forEach((doc) => {
+    // 4. Fallback/merge any dynamic directories/files directly in liveDocs in case we loaded an MDX file unregistered in the JSON database
+    liveDocs.forEach((doc) => {
       const meta = doc.metadata;
       
       // Determine if this is a registered active published article
@@ -347,7 +402,7 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
       ...cat,
       badge: `${cat.guides.length} Guide${cat.guides.length === 1 ? '' : 's'}`
     }));
-  }, [initialDocs, categoriesDb, articlesDb]);
+  }, [liveDocs, liveCategories, liveArticles]);
 
   // Extract all unique tags dynamically
   const allTags = useMemo(() => {

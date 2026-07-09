@@ -124,5 +124,5 @@ const markdownComponents = {
 };
 
 export default function BlogMarkdown({ content }: BlogMarkdownProps) {
-  return <Markdown components={markdownComponents}>{content}</Markdown>;
+  return <Markdown components={markdownComponents}>{content || ''}</Markdown>;
 }

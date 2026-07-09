@@ -9,6 +9,8 @@ import LazyBlogTOC from '@/components/LazyBlogTOC';
 import LazyBlogMarkdown from '@/components/LazyBlogMarkdown';
 import FeedbackPanel from '@/components/FeedbackPanel';
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
@@ -81,11 +83,11 @@ export default async function BlogPage({ params }: PageProps) {
     permanentRedirect('/');
   }
 
-  const { metadata, content } = doc;
-  const headings = extractHeadings(content);
+  const { metadata, content = '' } = doc;
+  const headings = extractHeadings(content || '');
 
   // Safe split for Segment-by-Segment rendering rules
-  const contentParts = content.split(/#{3}\s+Deep\s+Resolution\s+Methods/i);
+  const contentParts = (content || '').split(/#{3}\s+Deep\s+Resolution\s+Methods/i);
   const diagnosisMarkdown = contentParts[0];
   const resolutionMarkdown = '### Deep Resolution Methods\n' + (contentParts[1] || '');
 

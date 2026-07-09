@@ -13,5 +13,5 @@ interface LazyBlogTOCProps {
 }
 
 export default function LazyBlogTOC({ headings, variant = 'sidebar' }: LazyBlogTOCProps) {
-  return <BlogTOC headings={headings} variant={variant} />;
+  return <BlogTOC headings={headings || []} variant={variant} />;
 }

@@ -10,17 +10,27 @@
     "difficulty": "Easy",
     "estTime": "5-10 min",
     "successRate": "98%",
-    "tags": ["windows", "update", "system-repair"],
-    "keywords": ["0x80070002", "windows update", "missing files", "fix", "repair"],
+    "tags": [
+      "windows",
+      "update",
+      "system-repair"
+    ],
+    "keywords": [
+      "0x80070002",
+      "windows update",
+      "missing files",
+      "fix",
+      "repair"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
-      "meta_title": "How to Fix Windows Update Error 0x80070002 | Complete Guide",
-      "meta_description": "Step-by-step diagnostic workflows to troubleshoot and fix Windows Update Error 0x80070002. Restore missing update catalog files now.",
-      "canonical": "https://techerrorlog.com/blog/windows-update-0x80070002",
+      "og_title": "Fix Windows Update Error 0x80070002 Automatically",
       "focus_keyword": "0x80070002",
       "schema_type": "TechArticle",
-      "og_title": "Fix Windows Update Error 0x80070002 Automatically",
-      "og_description": "Restore catalog file health and resolve update 0x80070002 issue instantly."
+      "meta_title": "How to Fix Windows Update Error 0x80070002 | Complete Guide",
+      "meta_description": "Step-by-step diagnostic workflows to troubleshoot and fix Windows Update Error 0x80070002. Restore missing update catalog files now.",
+      "og_description": "Restore catalog file health and resolve update 0x80070002 issue instantly.",
+      "canonical": "https://techerrorlog.com/blog/windows-update-0x80070002"
     }
   },
   {
@@ -34,17 +44,28 @@
     "difficulty": "Medium",
     "estTime": "15 min",
     "successRate": "95%",
-    "tags": ["windows", "update", "net-framework", "system-repair"],
-    "keywords": ["0x800f081f", "windows update", "source files", "net framework", "fix"],
+    "tags": [
+      "windows",
+      "update",
+      "net-framework",
+      "system-repair"
+    ],
+    "keywords": [
+      "0x800f081f",
+      "windows update",
+      "source files",
+      "net framework",
+      "fix"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
-      "meta_title": "Fixing Windows Update Error 0x800f081f Step-by-Step",
-      "meta_description": "Learn why error 0x800f081f occurs and how to repair the source files required to install security updates and net framework packages.",
-      "canonical": "https://techerrorlog.com/blog/windows-update-0x800f081f",
+      "og_title": "Step-by-Step Guide for Error 0x800f081f",
       "focus_keyword": "0x800f081f",
       "schema_type": "TechArticle",
-      "og_title": "Step-by-Step Guide for Error 0x800f081f",
-      "og_description": "Learn the most effective system methods to recover missing source libraries."
+      "meta_title": "Fixing Windows Update Error 0x800f081f Step-by-Step",
+      "og_description": "Learn the most effective system methods to recover missing source libraries.",
+      "meta_description": "Learn why error 0x800f081f occurs and how to repair the source files required to install security updates and net framework packages.",
+      "canonical": "https://techerrorlog.com/blog/windows-update-0x800f081f"
     }
   },
   {
@@ -58,17 +79,27 @@
     "difficulty": "Medium",
     "estTime": "10 min",
     "successRate": "92%",
-    "tags": ["bsod", "system-crash", "sfc-scannow", "kernel"],
-    "keywords": ["0x000000EF", "BSOD", "critical process died", "windows crash"],
+    "tags": [
+      "bsod",
+      "system-crash",
+      "sfc-scannow",
+      "kernel"
+    ],
+    "keywords": [
+      "0x000000EF",
+      "BSOD",
+      "critical process died",
+      "windows crash"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
       "meta_title": "How to Resolve BSOD Critical Process Died (0x000000EF)",
-      "meta_description": "Find out what triggers the 0x000000EF system kernel crash and how to perform an administrative sfc repair sequence.",
-      "canonical": "https://techerrorlog.com/blog/bsod-0x000000ef",
-      "focus_keyword": "0x000000EF",
       "schema_type": "TechArticle",
-      "og_title": "BSOD 0x000000EF Repair Diagnostic Playbook",
-      "og_description": "Troubleshoot and fix Critical Process Died Blue Screens easily."
+      "canonical": "https://techerrorlog.com/blog/bsod-0x000000ef",
+      "meta_description": "Find out what triggers the 0x000000EF system kernel crash and how to perform an administrative sfc repair sequence.",
+      "og_description": "Troubleshoot and fix Critical Process Died Blue Screens easily.",
+      "focus_keyword": "0x000000EF",
+      "og_title": "BSOD 0x000000EF Repair Diagnostic Playbook"
     }
   },
   {
@@ -82,17 +113,27 @@
     "difficulty": "Advanced",
     "estTime": "15 min",
     "successRate": "90%",
-    "tags": ["bsod", "driver", "system-crash", "ndis"],
-    "keywords": ["0x000000D1", "BSOD", "driver irql", "driver crash"],
+    "tags": [
+      "bsod",
+      "driver",
+      "system-crash",
+      "ndis"
+    ],
+    "keywords": [
+      "0x000000D1",
+      "BSOD",
+      "driver irql",
+      "driver crash"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
       "meta_title": "How to Fix BSOD Error 0x000000D1 Driver IRQL",
-      "meta_description": "Prevent driver memory addressing violations and halt loops with offficial minidump configurations.",
-      "canonical": "https://techerrorlog.com/blog/bsod-0x000000d1",
-      "focus_keyword": "0x000000D1",
       "schema_type": "TechArticle",
-      "og_title": "Driver IRQL Not Less Or Equal Fix",
-      "og_description": "Rebuild driver registries and resolve watchdog crash loop errors."
+      "canonical": "https://techerrorlog.com/blog/bsod-0x000000d1",
+      "meta_description": "Prevent driver memory addressing violations and halt loops with offficial minidump configurations.",
+      "og_description": "Rebuild driver registries and resolve watchdog crash loop errors.",
+      "focus_keyword": "0x000000D1",
+      "og_title": "Driver IRQL Not Less Or Equal Fix"
     }
   },
   {
@@ -106,17 +147,26 @@
     "difficulty": "Easy",
     "estTime": "5 min",
     "successRate": "99%",
-    "tags": ["dll-error", "visual-c++", "gaming-fix"],
-    "keywords": ["vcruntime140.dll", "missing dll", "visual c++", "windows runtime"],
+    "tags": [
+      "dll-error",
+      "visual-c++",
+      "gaming-fix"
+    ],
+    "keywords": [
+      "vcruntime140.dll",
+      "missing dll",
+      "visual c++",
+      "windows runtime"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
-      "meta_title": "How to Fix VCRUNTIME140.dll Missing Mismatch Error",
+      "og_description": "Install official binary packages to fix game launches.",
       "meta_description": "Repair missing dynamic link library modules by installing Microsoft Visual Studio C++ Redistributable setups safely.",
       "canonical": "https://techerrorlog.com/blog/dll-vcruntime140",
-      "focus_keyword": "vcruntime140.dll",
+      "meta_title": "How to Fix VCRUNTIME140.dll Missing Mismatch Error",
       "schema_type": "TechArticle",
       "og_title": "Recover vcruntime140.dll Free Guide",
-      "og_description": "Install official binary packages to fix game launches."
+      "focus_keyword": "vcruntime140.dll"
     }
   },
   {
@@ -130,17 +180,26 @@
     "difficulty": "Easy",
     "estTime": "5 min",
     "successRate": "99%",
-    "tags": ["dll-error", "visual-c++", "dependency"],
-    "keywords": ["msvcp140.dll", "missing dll", "visual c++", "runtime library"],
+    "tags": [
+      "dll-error",
+      "visual-c++",
+      "dependency"
+    ],
+    "keywords": [
+      "msvcp140.dll",
+      "missing dll",
+      "visual c++",
+      "runtime library"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
-      "meta_title": "Fixing msvcp140.dll Missing Exception Error Guide",
-      "meta_description": "Resolve missing shared C++ runtime exceptions. Download safe Microsoft Redistributable installers.",
-      "canonical": "https://techerrorlog.com/blog/dll-msvcp140",
       "focus_keyword": "msvcp140.dll",
-      "schema_type": "TechArticle",
       "og_title": "Download and Re-Register msvcp140.dll",
-      "og_description": "Get rid of dynamic module load crashes for good."
+      "schema_type": "TechArticle",
+      "meta_title": "Fixing msvcp140.dll Missing Exception Error Guide",
+      "canonical": "https://techerrorlog.com/blog/dll-msvcp140",
+      "og_description": "Get rid of dynamic module load crashes for good.",
+      "meta_description": "Resolve missing shared C++ runtime exceptions. Download safe Microsoft Redistributable installers."
     }
   },
   {
@@ -154,17 +213,26 @@
     "difficulty": "Easy",
     "estTime": "10 min",
     "successRate": "95%",
-    "tags": ["system-repair", "sfc-scannow", "command-prompt"],
-    "keywords": ["sfc /scannow", "system file checker", "dism", "repair windows"],
+    "tags": [
+      "system-repair",
+      "sfc-scannow",
+      "command-prompt"
+    ],
+    "keywords": [
+      "sfc /scannow",
+      "system file checker",
+      "dism",
+      "repair windows"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
-      "meta_title": "Complete System File Checker Guide: sfc /scannow",
+      "og_description": "Audit system files and replace corrupted elements on disk.",
       "meta_description": "Learn to execute sfc /scannow in administrative console. Rebuild corrupted system catalogs and local images.",
       "canonical": "https://techerrorlog.com/blog/guides-sfc-scannow",
-      "focus_keyword": "sfc /scannow",
+      "meta_title": "Complete System File Checker Guide: sfc /scannow",
       "schema_type": "TechArticle",
       "og_title": "How to Run SFC /SCANNOW Command correctly",
-      "og_description": "Audit system files and replace corrupted elements on disk."
+      "focus_keyword": "sfc /scannow"
     }
   },
   {
@@ -178,17 +246,26 @@
     "difficulty": "Easy",
     "estTime": "5 min",
     "successRate": "99%",
-    "tags": ["gaming-fix", "graphics-driver", "diagnostics"],
-    "keywords": ["dxdiag", "directx", "graphics driver", "sound test"],
+    "tags": [
+      "gaming-fix",
+      "graphics-driver",
+      "diagnostics"
+    ],
+    "keywords": [
+      "dxdiag",
+      "directx",
+      "graphics driver",
+      "sound test"
+    ],
     "updated": "2026-06-08T12:00:00Z",
     "seo": {
-      "meta_title": "How to use DirectX Diagnostic tool (dxdiag) on Windows",
+      "og_description": "Retrieve exact details regarding physical display parameters.",
       "meta_description": "Access system specifications, GPU details, and audio endpoints utilizing native executive dxdiag queries.",
       "canonical": "https://techerrorlog.com/blog/tools-dxdiag",
-      "focus_keyword": "dxdiag",
       "schema_type": "TechArticle",
+      "meta_title": "How to use DirectX Diagnostic tool (dxdiag) on Windows",
       "og_title": "Use DirectX Diagnostic Utility Properly",
-      "og_description": "Retrieve exact details regarding physical display parameters."
+      "focus_keyword": "dxdiag"
     }
   },
   {
@@ -198,21 +275,32 @@
     "slug": "windows-update-0x80070005",
     "errorCode": "0x80070005",
     "priority": 1,
-    "status": "draft",
+    "status": "published",
     "difficulty": "Medium",
     "estTime": "8-12 min",
     "successRate": "94%",
-    "tags": ["windows", "update", "permissions", "access-denied"],
-    "keywords": ["0x80070005", "access denied", "windows update", "permissions", "subinacl"],
-    "updated": null,
+    "tags": [
+      "windows",
+      "update",
+      "permissions",
+      "access-denied"
+    ],
+    "keywords": [
+      "0x80070005",
+      "access denied",
+      "windows update",
+      "permissions",
+      "subinacl"
+    ],
+    "updated": "2026-07-08T23:53:07.265Z",
     "seo": {
-      "meta_title": "How to Fix Windows Update Error 0x80070005 (Access Denied)",
-      "meta_description": "Troubleshoot permission restrictions in program database directory directories that trigger error block 0x80070005.",
       "canonical": "https://techerrorlog.com/blog/windows-update-0x80070005",
-      "focus_keyword": "0x80070005",
+      "og_description": "Restore administrative write privileges to update sub-directories.",
+      "meta_description": "Troubleshoot permission restrictions in program database directory directories that trigger error block 0x80070005.",
+      "meta_title": "How to Fix Windows Update Error 0x80070005 (Access Denied)",
       "schema_type": "TechArticle",
-      "og_title": "Fix Windows Update Error 0x80070005 (Access Denied)",
-      "og_description": "Restore administrative write privileges to update sub-directories."
+      "focus_keyword": "0x80070005",
+      "og_title": "Fix Windows Update Error 0x80070005 (Access Denied)"
     }
   },
   {
@@ -222,21 +310,31 @@
     "slug": "windows-update-0x80070422",
     "errorCode": "0x80070422",
     "priority": 2,
-    "status": "draft",
+    "status": "published",
     "difficulty": "Easy",
     "estTime": "6 min",
     "successRate": "97%",
-    "tags": ["windows", "update", "services", "startup-fail"],
-    "keywords": ["0x80070422", "wuauserv", "services", "automatic update"],
-    "updated": null,
+    "tags": [
+      "windows",
+      "update",
+      "services",
+      "startup-fail"
+    ],
+    "keywords": [
+      "0x80070422",
+      "wuauserv",
+      "services",
+      "automatic update"
+    ],
+    "updated": "2026-07-08T23:53:11.449Z",
     "seo": {
-      "meta_title": "Solving Windows Update Error 0x80070422 Instantly",
-      "meta_description": "Resolve blocked service instances causing 0x80070422. Re-enable wuauserv using Windows services manager console.",
       "canonical": "https://techerrorlog.com/blog/windows-update-0x80070422",
-      "focus_keyword": "0x80070422",
+      "meta_description": "Resolve blocked service instances causing 0x80070422. Re-enable wuauserv using Windows services manager console.",
+      "og_description": "Restore automatic execution rules in system services parameters.",
+      "meta_title": "Solving Windows Update Error 0x80070422 Instantly",
       "schema_type": "TechArticle",
-      "og_title": "Quick Fix for Update Service Error 0x80070422",
-      "og_description": "Restore automatic execution rules in system services parameters."
+      "focus_keyword": "0x80070422",
+      "og_title": "Quick Fix for Update Service Error 0x80070422"
     }
   },
   {
@@ -246,21 +344,31 @@
     "slug": "bsod-0x00000078",
     "errorCode": "0x00000078",
     "priority": 2,
-    "status": "draft",
+    "status": "published",
     "difficulty": "Advanced",
     "estTime": "12-18 min",
     "successRate": "88%",
-    "tags": ["bsod", "system-crash", "initialization", "hal"],
-    "keywords": ["0x00000078", "PHASE0_EXCEPTION", "hal initialization", "BSOD"],
-    "updated": null,
+    "tags": [
+      "bsod",
+      "system-crash",
+      "initialization",
+      "hal"
+    ],
+    "keywords": [
+      "0x00000078",
+      "PHASE0_EXCEPTION",
+      "hal initialization",
+      "BSOD"
+    ],
+    "updated": "2026-07-08T23:53:13.915Z",
     "seo": {
-      "meta_title": "How to troubleshoot PHASE0_INITIALIZATION_FAILED 0x00000078",
-      "meta_description": "A deep-dive technical blueprint to solve system initialization halt errors within core CPU microcodes.",
-      "canonical": "https://techerrorlog.com/blog/bsod-0x00000078",
-      "focus_keyword": "0x00000078",
-      "schema_type": "TechArticle",
       "og_title": "Solving Phase 0 System Initialization Failure",
-      "og_description": "Solve rare kernel boot strap issues via BIOS updates."
+      "focus_keyword": "0x00000078",
+      "meta_title": "How to troubleshoot PHASE0_INITIALIZATION_FAILED 0x00000078",
+      "schema_type": "TechArticle",
+      "og_description": "Solve rare kernel boot strap issues via BIOS updates.",
+      "meta_description": "A deep-dive technical blueprint to solve system initialization halt errors within core CPU microcodes.",
+      "canonical": "https://techerrorlog.com/blog/bsod-0x00000078"
     }
   },
   {
@@ -270,20 +378,30 @@
     "slug": "kms-activation-0xc004c003",
     "errorCode": "0xC004C003",
     "priority": 1,
-    "status": "draft",
+    "status": "published",
     "difficulty": "Medium",
     "estTime": "10 min",
     "successRate": "94%",
-    "tags": ["licensing", "kms-key", "product-key", "activation"],
-    "keywords": ["0xC004C003", "KMS Activation", "product key blocked", "slmgr"],
-    "updated": null,
+    "tags": [
+      "licensing",
+      "kms-key",
+      "product-key",
+      "activation"
+    ],
+    "keywords": [
+      "0xC004C003",
+      "KMS Activation",
+      "product key blocked",
+      "slmgr"
+    ],
+    "updated": "2026-07-08T23:53:16.431Z",
     "seo": {
-      "meta_title": "Solving 0xC004C003 Product Key Blocked KMS Error",
-      "meta_description": "Restore corporate digital licensing parameters. Validate slmgr licensing commands via command prompt.",
-      "canonical": "https://techerrorlog.com/blog/kms-activation-0xc004c003",
       "focus_keyword": "0xC004C003",
-      "schema_type": "TechArticle",
       "og_title": "Fix Activation Error 0xC004C003 Promptly",
+      "meta_title": "Solving 0xC004C003 Product Key Blocked KMS Error",
+      "schema_type": "TechArticle",
+      "canonical": "https://techerrorlog.com/blog/kms-activation-0xc004c003",
+      "meta_description": "Restore corporate digital licensing parameters. Validate slmgr licensing commands via command prompt.",
       "og_description": "Force server synchronization of licensing tokens using standard slmgr commands."
     }
   },
@@ -294,21 +412,86 @@
     "slug": "fix-nvidia-watchdog-nvlddmkm",
     "errorCode": "nvlddmkm",
     "priority": 2,
-    "status": "draft",
+    "status": "published",
     "difficulty": "Advanced",
     "estTime": "15 min",
     "successRate": "92%",
-    "tags": ["driver", "graphics-driver", "nvidia", "gpu-crash"],
-    "keywords": ["nvlddmkm.sys", "watchdog timeout", "nvidia driver", "TdrDelay", "GPU crash"],
-    "updated": null,
+    "tags": [
+      "driver",
+      "graphics-driver",
+      "nvidia",
+      "gpu-crash"
+    ],
+    "keywords": [
+      "nvlddmkm.sys",
+      "watchdog timeout",
+      "nvidia driver",
+      "TdrDelay",
+      "GPU crash"
+    ],
+    "updated": "2026-07-08T23:53:19.128Z",
     "seo": {
+      "schema_type": "TechArticle",
       "meta_title": "How to Fix nvlddmkm.sys Nvidia Watchdog Crash",
       "meta_description": "Prevent direct GPU hardware halts by configuring graphics subsystem registry latency (TdrDelay) parameters.",
+      "og_description": "Execute a safe Display Driver Uninstaller (DDU) configuration in Safe Mode.",
       "canonical": "https://techerrorlog.com/blog/fix-nvidia-watchdog-nvlddmkm",
-      "focus_keyword": "nvlddmkm",
-      "schema_type": "TechArticle",
       "og_title": "Complete Playbook: Rebuilding nvlddmkm.sys Driver Core",
-      "og_description": "Execute a safe Display Driver Uninstaller (DDU) configuration in Safe Mode."
+      "focus_keyword": "nvlddmkm"
+    }
+  },
+  {
+    "id": 14,
+    "category": "windows-update",
+    "title": "Test Windows Update Error 0x80070002",
+    "slug": "test-windows-update-error-0x80070002",
+    "errorCode": "0x80070002",
+    "priority": 2,
+    "status": "published",
+    "difficulty": "Medium",
+    "estTime": "10 min",
+    "successRate": "95%",
+    "keywords": [
+      "0x80070002",
+      "fix",
+      "error"
+    ],
+    "updated": "2026-07-09T01:45:07.437Z",
+    "seo": {
+      "meta_title": "How to Fix Test Windows Update Error 0x80070002 | TechErrorLog",
+      "meta_description": "Learn how to diagnose and resolve Test Windows Update Error 0x80070002 issues using our professional, step-by-step troubleshooting playbook.",
+      "canonical": "https://techerrorlog.com/blog/test-windows-update-error-0x80070002",
+      "focus_keyword": "0x80070002",
+      "schema_type": "TechArticle",
+      "og_title": "Resolve Test Windows Update Error 0x80070002",
+      "og_description": "Complete diagnostic playbook for fixing Test Windows Update Error 0x80070002 errors."
+    }
+  },
+  {
+    "id": 15,
+    "category": "windows-update",
+    "title": "How to Fix Error 0x80070422 in Windows",
+    "slug": "how-to-fix-error-0x80070422-in-windows",
+    "errorCode": "0x80070422",
+    "priority": 2,
+    "status": "published",
+    "difficulty": "Medium",
+    "estTime": "10 min",
+    "successRate": "95%",
+    "keywords": [
+      "0x80070422",
+      "fix",
+      "error"
+    ],
+    "updated": "2026-07-09T01:46:41.482Z",
+    "seo": {
+      "meta_title": "How to Fix How to Fix Error 0x80070422 in Windows | TechErrorLog",
+      "meta_description": "Learn how to diagnose and resolve How to Fix Error 0x80070422 in Windows issues using our professional, step-by-step troubleshooting playbook.",
+      "canonical": "https://techerrorlog.com/blog/how-to-fix-error-0x80070422-in-windows",
+      "focus_keyword": "0x80070422",
+      "schema_type": "TechArticle",
+      "og_title": "Resolve How to Fix Error 0x80070422 in Windows",
+      "og_description": "Complete diagnostic playbook for fixing How to Fix Error 0x80070422 in Windows errors."
     }
   }
 ]

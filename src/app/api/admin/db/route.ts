@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, firebaseAdminDb } from "@/lib/firebase-admin";
 import { doc, setDoc } from "firebase/firestore";
 import { getArticlesData, getCategoriesData, getSettingsData } from "@/lib/content";
 
@@ -77,7 +77,34 @@ export async function POST(req: NextRequest) {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
 
     // Mirror to Cloud Firestore database permanently
-    if (adminDb) {
+    let writeSucceeded = false;
+    if (firebaseAdminDb) {
+      try {
+        if (type === "articles") {
+          for (const art of data) {
+            if (art.slug) {
+              await firebaseAdminDb.collection("articles").doc(art.slug).set(adminPayload(art), { merge: true });
+            }
+          }
+        } else if (type === "categories") {
+          for (const cat of data) {
+            const docId = cat.id || cat.slug;
+            if (docId) {
+              await firebaseAdminDb.collection("categories").doc(docId).set(adminPayload(cat), { merge: true });
+            }
+          }
+        } else if (type === "settings") {
+          await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(data), { merge: true });
+        } else if (type === "internal_links") {
+          await firebaseAdminDb.collection("settings").doc("internal_links").set(adminPayload({ links: data }), { merge: true });
+        }
+        writeSucceeded = true;
+      } catch (adminWriteErr: any) {
+        console.warn("[FS Admin Write Err] Failed via Admin SDK, falling back to Client SDK:", adminWriteErr.message);
+      }
+    }
+
+    if (!writeSucceeded && adminDb) {
       try {
         if (type === "articles") {
           for (const art of data) {
@@ -98,6 +125,7 @@ export async function POST(req: NextRequest) {
           // Double down and save list of links too
           await setDoc(doc(adminDb, "settings", "internal_links"), adminPayload({ links: data }));
         }
+        writeSucceeded = true;
       } catch (fsErr) {
         console.error(`[FS POST Err] Permanent mirror failed for ${type}: `, fsErr);
       }
@@ -113,7 +141,17 @@ export async function POST(req: NextRequest) {
           settings.lastUpdated = new Date().toISOString();
           fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf8");
           
-          if (adminDb) {
+          let tsUpdateSucceeded = false;
+          if (firebaseAdminDb) {
+            try {
+              await firebaseAdminDb.collection("settings").doc("global").set(adminPayload({ lastUpdated: settings.lastUpdated }), { merge: true });
+              tsUpdateSucceeded = true;
+            } catch (tsAdminErr: any) {
+              console.warn("Failed to update settings timestamp via Admin SDK:", tsAdminErr.message);
+            }
+          }
+          
+          if (!tsUpdateSucceeded && adminDb) {
             await setDoc(doc(adminDb, "settings", "global"), adminPayload({ lastUpdated: settings.lastUpdated }), { merge: true });
           }
         } catch (e) {

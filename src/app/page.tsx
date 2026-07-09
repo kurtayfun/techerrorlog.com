@@ -1,8 +1,8 @@
 import { getAllDocs, getCategoriesData, getArticlesData, getSettingsData } from "@/lib/content";
 import HomeClient from "@/components/HomeClient";
 
-// For static export, the main landing page is pre-compiled at build time.
-export const dynamic = "force-static";
+// Enable real-time dynamic rendering for newly generated articles
+export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const docs = await getAllDocs();

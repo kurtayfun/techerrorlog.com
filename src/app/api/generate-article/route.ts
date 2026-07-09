@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, firebaseAdminDb } from "@/lib/firebase-admin";
 import { doc, setDoc } from "firebase/firestore";
 
 export const dynamic = "force-dynamic";
@@ -309,16 +309,33 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
         fs.writeFileSync(articlesPath, JSON.stringify(articles, null, 2), "utf8");
 
         // Write the article metadata with full content directly into Cloud Firestore
-        if (adminDb) {
+        let syncSucceeded = false;
+        const metaIndex = articles.findIndex((a: any) => a.slug === slugName);
+        const savedMetadata = metaIndex !== -1 ? articles[metaIndex] : articles[articles.length - 1];
+
+        if (firebaseAdminDb) {
           try {
-            const index = articles.findIndex((a: any) => a.slug === slugName);
-            const savedMetadata = index !== -1 ? articles[index] : articles[articles.length - 1];
+            await firebaseAdminDb.collection("articles").doc(slugName).set({
+              ...savedMetadata,
+              content: mdxContent,
+              secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
+            }, { merge: true });
+            syncSucceeded = true;
+            console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore via Admin SDK.`);
+          } catch (adminErr: any) {
+            console.warn(`[FS Sync Admin Warn] Could not save generated article ${slugName} via Admin SDK, falling back:`, adminErr.message);
+          }
+        }
+
+        if (!syncSucceeded && adminDb) {
+          try {
             await setDoc(doc(adminDb, "articles", slugName), {
               ...savedMetadata,
               content: mdxContent,
               secretToken: "AI_STUDIO_SECURE_ADMIN_SECRET_2026"
             });
-            console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore.`);
+            syncSucceeded = true;
+            console.log(`[FS Sync Success] Generated article ${slugName} secured in Cloud Firestore via Client SDK.`);
           } catch (fsErr) {
             console.error(`[FS Sync Fail] Could not save generated article ${slugName} to Firestore:`, fsErr);
           }
