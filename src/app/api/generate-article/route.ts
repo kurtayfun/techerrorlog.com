@@ -4,18 +4,40 @@ import fs from "fs";
 import path from "path";
 import { adminDb, firebaseAdminDb } from "@/lib/firebase-admin";
 import { doc, setDoc } from "firebase/firestore";
+import { getSettingsData } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
 // Initialize Gemini client lazily to avoid application crashing if the key is missing in other contexts
+let cachedApiKey: string | null = null;
 let aiClient: GoogleGenAI | null = null;
 
-function getAiClient(): GoogleGenAI {
-  if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is required");
+async function getAiClient(): Promise<GoogleGenAI> {
+  let apiKey = process.env.GEMINI_API_KEY;
+  let isCustom = false;
+  if (!apiKey) {
+    try {
+      const settings = await getSettingsData();
+      if (settings && settings.geminiApiKey) {
+        apiKey = settings.geminiApiKey;
+        isCustom = true;
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch settings database for geminiApiKey fallback:", err.message);
     }
+  }
+
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY environment variable is missing and no custom key is configured in Admin Settings. Please configure it in your production site settings panel.");
+  }
+
+  if (!aiClient || cachedApiKey !== apiKey) {
+    if (isCustom) {
+      console.log("[Gemini API] Initializing Gemini client with user-configured custom API Key.");
+    } else {
+      console.log("[Gemini API] Initializing Gemini client with system environment API Key.");
+    }
+    cachedApiKey = apiKey;
     aiClient = new GoogleGenAI({
       apiKey,
       httpOptions: {
@@ -188,7 +210,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ai = getAiClient();
+    const ai = await getAiClient();
     const slugName = generateSlug(title);
 
     // Try to load system instruction from prompts.json, otherwise fallback

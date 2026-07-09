@@ -35,6 +35,12 @@ export async function GET(req: NextRequest) {
       data = await getCategoriesData();
     } else if (type === "settings") {
       data = await getSettingsData();
+      if (data && data.geminiApiKey) {
+        data = {
+          ...data,
+          geminiApiKey: "••••••••••••••••"
+        };
+      }
     } else {
       // Fallback for types not stored directly in Firestore collections yet
       const filePath = getFilePath(type);
@@ -65,6 +71,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No data provided" }, { status: 400 });
     }
 
+    let finalData = data;
+    if (type === "settings") {
+      const currentSettings = await getSettingsData();
+      if (data.geminiApiKey === "••••••••••••••••") {
+        finalData = {
+          ...data,
+          geminiApiKey: currentSettings.geminiApiKey || ""
+        };
+      }
+    }
+
     const filePath = getFilePath(type);
     
     // Ensure parent dir exists (should be src/data)
@@ -74,7 +91,7 @@ export async function POST(req: NextRequest) {
         fs.mkdirSync(dirPath, { recursive: true });
       }
       // Write to local JSON file for resilience and local fallbacks
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+      fs.writeFileSync(filePath, JSON.stringify(finalData, null, 2), "utf8");
     } catch (fsWriteErr: any) {
       console.warn(`[Local FS Write Warning] Failed to write local JSON file ${filePath} in this environment (expected and non-critical on live serverless environments):`, fsWriteErr.message);
     }
@@ -97,7 +114,7 @@ export async function POST(req: NextRequest) {
             }
           }
         } else if (type === "settings") {
-          await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(data), { merge: true });
+          await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(finalData), { merge: true });
         } else if (type === "internal_links") {
           await firebaseAdminDb.collection("settings").doc("internal_links").set(adminPayload({ links: data }), { merge: true });
         }
@@ -123,7 +140,7 @@ export async function POST(req: NextRequest) {
             }
           }
         } else if (type === "settings") {
-          await setDoc(doc(adminDb, "settings", "global"), adminPayload(data), { merge: true });
+          await setDoc(doc(adminDb, "settings", "global"), adminPayload(finalData), { merge: true });
         } else if (type === "internal_links") {
           // Double down and save list of links too
           await setDoc(doc(adminDb, "settings", "internal_links"), adminPayload({ links: data }));

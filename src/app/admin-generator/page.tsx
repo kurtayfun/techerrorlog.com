@@ -80,6 +80,7 @@ interface SettingData {
   sitemapAutoUpdate: boolean;
   generationLanguageDefault: string;
   geminiModel: string;
+  geminiApiKey?: string;
   lastUpdated: string;
 }
 
@@ -1458,6 +1459,20 @@ export default function AdminGeneratorPage() {
                             className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 w-full font-mono cursor-not-allowed"
                             disabled
                           />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500 block">Gemini API Key (Canlı Ortam Fallback)</label>
+                          <input 
+                            type="password"
+                            placeholder="API anahtarınızı buraya girin (AI Studio / Cloud)..."
+                            value={settings.geminiApiKey || ""}
+                            onChange={(e) => setSettings({...settings, geminiApiKey: e.target.value})}
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-750 w-full font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                          />
+                          <p className="text-[10px] text-slate-450 leading-normal">
+                            Eğer canlı sunucuda (live host) <code>GEMINI_API_KEY</code> ortam değişkeni yüklü değilse, bu API anahtarı kullanılarak yazılar başarıyla üretilir. Güvenli şekilde maskelenerek saklanır.
+                          </p>
                         </div>
 
                         <div className="p-3 bg-blue-50/45 border border-blue-100 rounded-lg space-y-2">
