@@ -1260,19 +1260,39 @@ export default function AdminGeneratorPage() {
                           <Grid className="w-4 h-4 text-blue-500" />
                           Hazırlanan Toplu Üretim Kuyruğu ({bulkQueue.length})
                           {bulkQueue.length > 0 && !isBulkProcessing && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm("Kuyruğu temizlemek istediğinize emin misiniz?")) {
-                                  setBulkQueue([]);
-                                  localStorage.removeItem("admin_bulk_queue");
-                                  localStorage.setItem("admin_is_bulk_processing", "false");
-                                }
-                              }}
-                              className="text-[10px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md py-0.5 px-2 transition-colors border border-rose-150 ml-1.5"
-                            >
-                              Kuyruğu Temizle
-                            </button>
+                            <div className="inline-flex gap-1.5 ml-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm("Kuyruktaki tüm makalelerin durumunu 'Bekliyor' (idle) olarak sıfırlamak istiyor musunuz? Bu işlem daha önce tamamlanmış veya hata almış olanları tekrar sıraya alacaktır.")) {
+                                    const resetQueue = bulkQueue.map(item => ({
+                                      ...item,
+                                      status: "idle" as const,
+                                      error: undefined,
+                                      slug: undefined
+                                    }));
+                                    setBulkQueue(resetQueue);
+                                    localStorage.setItem("admin_bulk_queue", JSON.stringify(resetQueue));
+                                  }
+                                }}
+                                className="text-[10px] text-blue-650 hover:text-blue-750 bg-blue-50 hover:bg-blue-100 rounded-md py-0.5 px-2 transition-colors border border-blue-150"
+                              >
+                                Durumları Sıfırla (Yeniden Yaz)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm("Kuyruğu temizlemek istediğinize emin misiniz?")) {
+                                    setBulkQueue([]);
+                                    localStorage.removeItem("admin_bulk_queue");
+                                    localStorage.setItem("admin_is_bulk_processing", "false");
+                                  }
+                                }}
+                                className="text-[10px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md py-0.5 px-2 transition-colors border border-rose-150"
+                              >
+                                Kuyruğu Temizle
+                              </button>
+                            </div>
                           )}
                         </h3>
                         <p className="text-[11px] text-slate-550 mt-1 font-medium leading-relaxed">
@@ -1635,13 +1655,18 @@ export default function AdminGeneratorPage() {
                         
                         <div className="space-y-1">
                           <label className="text-[10px] font-semibold text-slate-500 block">Aktif Yapay Zeka Modeli (Gemini SDK)</label>
-                          <input 
-                            type="text"
-                            value={settings.geminiModel}
+                          <select 
+                            value={settings.geminiModel || "gemini-3.5-flash"}
                             onChange={(e) => setSettings({...settings, geminiModel: e.target.value})}
-                            className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 w-full font-mono cursor-not-allowed"
-                            disabled
-                          />
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-750 w-full font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                          >
+                            <option value="gemini-3.5-flash">Gemini 3.5 Flash (Yüksek Kalite & Hız)</option>
+                            <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Ekonomik & Ultra Hızlı)</option>
+                            <option value="gemini-flash-latest">Gemini 1.5 Flash (Geleneksel & Kararlı)</option>
+                          </select>
+                          <p className="text-[10px] text-slate-450 leading-normal mt-1">
+                            Seçtiğiniz modele göre makale oluşturma maliyeti değişir. <b>Gemini 3.1 Flash Lite</b>, Gemini 3.5 Flash&apos;a kıyasla çok daha düşük bir bütçeyle çalışır.
+                          </p>
                         </div>
 
                         <div className="space-y-1">

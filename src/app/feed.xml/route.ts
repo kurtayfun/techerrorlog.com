@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllDocs } from '@/lib/content';
+import { getAllDocs, getSettingsData } from '@/lib/content';
 
 function escapeXml(unsafe: string): string {
   return unsafe.replace(/[<>&'"]/g, (c) => {
@@ -16,7 +16,11 @@ function escapeXml(unsafe: string): string {
 
 export async function GET() {
   const docs = await getAllDocs();
-  const siteUrl = 'https://techerrorlog.com';
+  const settings = await getSettingsData();
+  
+  const siteUrl = settings.siteUrl ? settings.siteUrl.replace(/\/$/, '') : 'https://techerrorlog.com';
+  const siteName = settings.siteName || 'TechErrorLog';
+  const siteDesc = settings.description || 'Precise, verified, and clutter-free diagnostic workflows for Windows error codes.';
 
   const feedItemsXml = docs
     .map((doc) => {
@@ -39,9 +43,9 @@ export async function GET() {
   const rssFeedXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>TechErrorLog Diagnostic Directory</title>
+    <title>${escapeXml(siteName)} Diagnostic Directory</title>
     <link>${siteUrl}</link>
-    <description>Precise, verified, and clutter-free diagnostic workflows for Windows error codes.</description>
+    <description>${escapeXml(siteDesc)}</description>
     <language>en-us</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${siteUrl}/feed.xml" rel="self" type="application/rss+xml" />

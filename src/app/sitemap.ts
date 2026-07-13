@@ -1,9 +1,12 @@
 import type { MetadataRoute } from 'next';
-import { getAllDocs, getArticlesData } from '@/lib/content';
+import { getAllDocs, getArticlesData, getSettingsData } from '@/lib/content';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const docs = await getAllDocs();
   const registeredArticles = await getArticlesData();
+  const settings = await getSettingsData();
+  
+  const siteUrl = settings.siteUrl ? settings.siteUrl.replace(/\/$/, '') : 'https://techerrorlog.com';
   
   // Create a filter set of active registered slugs with published status
   const activeSlugs = new Set(
@@ -15,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const blogUrls: MetadataRoute.Sitemap = docs
     .filter((doc) => activeSlugs.has(doc.metadata.slug))
     .map((doc) => ({
-      url: `https://techerrorlog.com/blog/${doc.metadata.slug}`,
+      url: `${siteUrl}/blog/${doc.metadata.slug}`,
       lastModified: new Date(doc.metadata.date || new Date()),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
@@ -23,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     {
-      url: 'https://techerrorlog.com',
+      url: siteUrl,
       lastModified: new Date(),
       changeFrequency: 'daily' as const,
       priority: 1.0,

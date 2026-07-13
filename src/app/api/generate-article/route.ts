@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { adminDb, firebaseAdminDb } from "@/lib/firebase-admin";
 import { doc, setDoc } from "firebase/firestore/lite";
-import { getSettingsData, getPromptsData } from "@/lib/content";
+import { getSettingsData, getPromptsData, getCategoriesData } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -298,13 +298,17 @@ Additional Guidelines or Context: "${extraContext}"
 Write it STRICTLY in English. Translating any Turkish parameters if needed.
 Ensure the YAML frontmatter block is complete and is followed by '### Introduction'.`;
 
+    const activeModel = settingsData?.geminiModel || "gemini-3.1-flash-lite";
     const response = await generateContentWithRetry(
       ai,
-      "gemini-3.5-flash",
+      activeModel,
       prompt,
       {
         systemInstruction,
         temperature: 0.7,
+        thinkingConfig: {
+          thinkingLevel: "LOW", // Force low cost and minimal latency thinking mode
+        }
       }
     );
 
@@ -345,17 +349,62 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
     // Extract tags from generated content
     const parsedTags = extractTagsFromContent(mdxContent);
 
-    // Map category nicely
+    // Load categories dynamically to match the incoming category correctly and safely
     let mappedCategory = "windows-update";
-    const catClean = category.toLowerCase();
-    if (catClean.includes("update")) mappedCategory = "windows-update";
-    else if (catClean.includes("bsod") || catClean.includes("blue")) mappedCategory = "bsod";
-    else if (catClean.includes("dll") || catClean.includes("library")) mappedCategory = "dll";
-    else if (catClean.includes("gaming") || catClean.includes("game")) mappedCategory = "gaming";
-    else if (catClean.includes("activation") || catClean.includes("license")) mappedCategory = "activation";
-    else if (catClean.includes("driver") || catClean.includes("hardware")) mappedCategory = "driver";
-    else if (catClean.includes("performance") || catClean.includes("slow") || catClean.includes("usage")) mappedCategory = "performance";
-    else if (catClean.includes("troubleshoot") || catClean.includes("guide") || catClean.includes("safe mode")) mappedCategory = "troubleshooting";
+    try {
+      const categoriesList = await getCategoriesData();
+      const catClean = category.toLowerCase().trim();
+      
+      // 1. Exact ID match
+      const exactIdMatch = categoriesList.find((c: any) => (c.id || "").toLowerCase() === catClean);
+      if (exactIdMatch) {
+        mappedCategory = exactIdMatch.id;
+      } else {
+        // 2. Slug match
+        const slugMatch = categoriesList.find((c: any) => (c.slug || "").toLowerCase() === catClean);
+        if (slugMatch) {
+          mappedCategory = slugMatch.id;
+        } else {
+          // 3. Look for name match
+          const nameMatch = categoriesList.find((c: any) => (c.name || "").toLowerCase() === catClean);
+          if (nameMatch) {
+            mappedCategory = nameMatch.id;
+          } else {
+            // 4. Fuzzy contains matching based on actual categories list
+            const matchedCat = categoriesList.find((c: any) => {
+              const id = (c.id || "").toLowerCase();
+              const name = (c.name || "").toLowerCase();
+              
+              if (catClean.includes("update") && id.includes("update")) return true;
+              if ((catClean.includes("bsod") || catClean.includes("blue")) && id.includes("bsod")) return true;
+              if ((catClean.includes("dll") || catClean.includes("library")) && id.includes("dll")) return true;
+              if ((catClean.includes("gaming") || catClean.includes("game")) && id.includes("gaming")) return true;
+              if ((catClean.includes("activation") || catClean.includes("license")) && id.includes("activation")) return true;
+              if ((catClean.includes("driver") || catClean.includes("hardware")) && id.includes("driver")) return true;
+              
+              return name.includes(catClean) || catClean.includes(name) || id.includes(catClean) || catClean.includes(id);
+            });
+            
+            if (matchedCat) {
+              mappedCategory = matchedCat.id;
+            } else {
+              // Ensure we fall back to a category ID that is 100% active and present in the system
+              mappedCategory = categoriesList[0]?.id || "windows-update";
+            }
+          }
+        }
+      }
+    } catch (catErr) {
+      console.error("Failed to dynamically load and match category:", catErr);
+      // Fail-safe static mapping matching original standard categories
+      const catClean = category.toLowerCase();
+      if (catClean.includes("update")) mappedCategory = "windows-update";
+      else if (catClean.includes("bsod") || catClean.includes("blue")) mappedCategory = "bsod";
+      else if (catClean.includes("dll") || catClean.includes("library")) mappedCategory = "dll";
+      else if (catClean.includes("gaming") || catClean.includes("game")) mappedCategory = "gaming";
+      else if (catClean.includes("activation") || catClean.includes("license")) mappedCategory = "activation";
+      else if (catClean.includes("driver") || catClean.includes("hardware")) mappedCategory = "driver";
+    }
 
     const articleTags = parsedTags.length > 0 ? parsedTags : getDefaultTags(mappedCategory, inferredErrorCode);
 

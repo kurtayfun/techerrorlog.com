@@ -5,7 +5,7 @@
   "rssEnabled": true,
   "sitemapAutoUpdate": true,
   "generationLanguageDefault": "tr",
-  "geminiModel": "gemini-3.5-flash",
+  "geminiModel": "gemini-3.1-flash-lite",
   "adsenseEnabled": false,
   "adsensePublisherId": "",
   "adminPassword": "admin123",

@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import AdSlot from '@/components/AdSlot';
 import { getDocBySlug, extractHeadings, getAllDocs, getArticlesData } from '@/lib/content';
@@ -84,13 +84,13 @@ export default async function BlogPage({ params }: PageProps) {
   
   if (!isActive) {
     // Elegant SEO redirection back to the home page to bypass 404/broken page experiences
-    permanentRedirect('/');
+    redirect('/');
   }
 
   const doc = await getDocBySlug(slug);
 
   if (!doc) {
-    permanentRedirect('/');
+    redirect('/');
   }
 
   const { metadata, content = '' } = doc;

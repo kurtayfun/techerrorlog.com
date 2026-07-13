@@ -102,6 +102,8 @@ export function parseFrontmatter(fileContent: string): Doc {
 
 // Global flag to track seeding status during hot server context
 let isSeeded = false;
+let cachedSettings: any = null;
+let cachedPrompts: any = null;
 
 const adminPayload = (data: any) => ({
   ...data,
@@ -135,15 +137,21 @@ export async function seedIfEmpty() {
       // Seed settings
       const settingsPath = path.join(process.cwd(), "src/data/settings.json");
       if (fs.existsSync(settingsPath)) {
-        const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-        await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(settings), { merge: true });
+        const globalCheck = await firebaseAdminDb.collection("settings").doc("global").get();
+        if (!globalCheck.exists) {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+          await firebaseAdminDb.collection("settings").doc("global").set(adminPayload(settings), { merge: true });
+        }
       }
 
       // Seed prompts
       const promptsPath = path.join(process.cwd(), "src/data/prompts.json");
       if (fs.existsSync(promptsPath)) {
-        const prompts = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
-        await firebaseAdminDb.collection("settings").doc("prompts").set(adminPayload(prompts), { merge: true });
+        const promptsCheck = await firebaseAdminDb.collection("settings").doc("prompts").get();
+        if (!promptsCheck.exists) {
+          const prompts = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
+          await firebaseAdminDb.collection("settings").doc("prompts").set(adminPayload(prompts), { merge: true });
+        }
       }
 
       // Seed articles with their parsed markdown content
@@ -205,14 +213,20 @@ export async function seedIfEmpty() {
 
       const settingsPath = path.join(process.cwd(), "src/data/settings.json");
       if (fs.existsSync(settingsPath)) {
-        const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-        await setDoc(doc(adminDb, "settings", "global"), adminPayload(settings));
+        const globalCheck = await getDoc(doc(adminDb, "settings", "global"));
+        if (!globalCheck.exists()) {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+          await setDoc(doc(adminDb, "settings", "global"), adminPayload(settings));
+        }
       }
 
       const promptsPath = path.join(process.cwd(), "src/data/prompts.json");
       if (fs.existsSync(promptsPath)) {
-        const prompts = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
-        await setDoc(doc(adminDb, "settings", "prompts"), adminPayload(prompts));
+        const promptsCheck = await getDoc(doc(adminDb, "settings", "prompts"));
+        if (!promptsCheck.exists()) {
+          const prompts = JSON.parse(fs.readFileSync(promptsPath, "utf8"));
+          await setDoc(doc(adminDb, "settings", "prompts"), adminPayload(prompts));
+        }
       }
 
       const articlesPath = path.join(process.cwd(), "src/data/articles.json");
@@ -527,7 +541,8 @@ export async function getSettingsData() {
       try {
         const docSnap = await firebaseAdminDb.collection("settings").doc("global").get();
         if (docSnap.exists) {
-          return docSnap.data() || {};
+          cachedSettings = docSnap.data() || {};
+          return cachedSettings;
         }
       } catch (e: any) {
         console.warn("Failed to read settings via Admin SDK:", e.message);
@@ -539,21 +554,29 @@ export async function getSettingsData() {
       try {
         const docSnap = await getDoc(doc(adminDb, "settings", "global"));
         if (docSnap.exists()) {
-          return docSnap.data() || {};
+          cachedSettings = docSnap.data() || {};
+          return cachedSettings;
         }
       } catch (e) {
         console.error("Failed to read settings from firestore:", e);
       }
     }
 
+    // Fallback to in-memory cache if database failed
+    if (cachedSettings) {
+      return cachedSettings;
+    }
+
     const filePath = path.join(process.cwd(), "src/data/settings.json");
     if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+      const settings = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      cachedSettings = settings;
+      return settings;
     }
   } catch (e) {
     console.error("Error reading settings JSON:", e);
   }
-  return {};
+  return cachedSettings || {};
 }
 
 export async function getPromptsData() {
@@ -565,7 +588,8 @@ export async function getPromptsData() {
       try {
         const docSnap = await firebaseAdminDb.collection("settings").doc("prompts").get();
         if (docSnap.exists) {
-          return docSnap.data() || {};
+          cachedPrompts = docSnap.data() || {};
+          return cachedPrompts;
         }
       } catch (e: any) {
         console.warn("Failed to read prompts via Admin SDK:", e.message);
@@ -577,25 +601,35 @@ export async function getPromptsData() {
       try {
         const docSnap = await getDoc(doc(adminDb, "settings", "prompts"));
         if (docSnap.exists()) {
-          return docSnap.data() || {};
+          cachedPrompts = docSnap.data() || {};
+          return cachedPrompts;
         }
       } catch (e) {
         console.error("Failed to read prompts from firestore:", e);
       }
     }
 
+    // Fallback to in-memory cache if database failed
+    if (cachedPrompts) {
+      return cachedPrompts;
+    }
+
     const filePath = path.join(process.cwd(), "src/data/prompts.json");
     if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+      const prompts = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      cachedPrompts = prompts;
+      return prompts;
     }
   } catch (e) {
     console.error("Error reading prompts JSON:", e);
   }
   const defaultPromptPath = path.join(process.cwd(), "src/data/prompts.json");
   if (fs.existsSync(defaultPromptPath)) {
-    return JSON.parse(fs.readFileSync(defaultPromptPath, "utf8"));
+    const prompts = JSON.parse(fs.readFileSync(defaultPromptPath, "utf8"));
+    cachedPrompts = prompts;
+    return prompts;
   }
-  return {};
+  return cachedPrompts || {};
 }
 
 export async function getArticlesData() {
