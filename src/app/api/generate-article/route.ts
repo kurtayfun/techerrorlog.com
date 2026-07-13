@@ -13,21 +13,24 @@ let cachedApiKey: string | null = null;
 let aiClient: GoogleGenAI | null = null;
 
 async function getAiClient(): Promise<GoogleGenAI> {
-  let apiKey = process.env.GEMINI_API_KEY;
+  let apiKey = "";
   let isCustom = false;
-  if (!apiKey) {
-    try {
-      const settings = await getSettingsData();
-      if (settings && settings.geminiApiKey) {
-        apiKey = settings.geminiApiKey;
-        isCustom = true;
-      }
-    } catch (err: any) {
-      console.error("Failed to fetch settings database for geminiApiKey fallback:", err.message);
+
+  try {
+    const settings = await getSettingsData();
+    if (settings && settings.geminiApiKey && settings.geminiApiKey.trim() !== "" && settings.geminiApiKey !== "••••••••••••••••") {
+      apiKey = settings.geminiApiKey;
+      isCustom = true;
     }
+  } catch (err: any) {
+    console.error("Failed to fetch settings database for geminiApiKey:", err.message);
   }
 
   if (!apiKey) {
+    apiKey = process.env.GEMINI_API_KEY || "";
+  }
+
+  if (!apiKey || apiKey.trim() === "") {
     throw new Error("GEMINI_API_KEY environment variable is missing and no custom key is configured in Admin Settings. Please configure it in your production site settings panel.");
   }
 
@@ -306,9 +309,6 @@ Ensure the YAML frontmatter block is complete and is followed by '### Introducti
       {
         systemInstruction,
         temperature: 0.7,
-        thinkingConfig: {
-          thinkingLevel: "LOW", // Force low cost and minimal latency thinking mode
-        }
       }
     );
 
