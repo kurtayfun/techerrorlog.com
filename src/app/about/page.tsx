@@ -2,9 +2,14 @@ import React from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 
-export const metadata = {
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
   title: 'About Us | TechErrorLog',
   description: 'Learn about our mission to curate precise, verified, and clutter-free diagnostic workflows for Windows operating systems.',
+  alternates: {
+    canonical: 'https://techerrorlog.com/about',
+  },
 };
 
 export default function AboutPage() {
