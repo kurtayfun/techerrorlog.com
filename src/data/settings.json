@@ -8,6 +8,7 @@
   "geminiModel": "gemini-3.1-flash-lite",
   "adsenseEnabled": false,
   "adsensePublisherId": "",
+  "googleAnalyticsId": "",
   "adminPassword": "admin123",
   "lastUpdated": "2026-06-09T10:30:00Z"
 }

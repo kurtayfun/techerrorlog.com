@@ -83,6 +83,7 @@ interface SettingData {
   geminiApiKey?: string;
   adsenseEnabled?: boolean;
   adsensePublisherId?: string;
+  googleAnalyticsId?: string;
   lastUpdated: string;
 }
 
@@ -1645,6 +1646,25 @@ export default function AdminGeneratorPage() {
                             />
                             <p className="text-[9px] text-slate-450 leading-relaxed">
                               Örn: <code>ca-pub-1234567890123456</code>. Reklamları kapatırsanız veya boş bırakırsanız, reklam alanlarında şık yer tutucular (placeholder) gösterilir.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Google Analytics Entegrasyonu */}
+                        <div className="pt-4 border-t border-slate-100 space-y-4">
+                          <span className="text-[10px] font-extrabold text-slate-450 block uppercase tracking-wider">Google Analytics Entegrasyonu</span>
+                          
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-slate-500 block">Ölçüm Kimliği (Measurement ID / G-XXXXXX)</label>
+                            <input 
+                              type="text"
+                              placeholder="G-XXXXXXXXXX"
+                              value={settings.googleAnalyticsId || ""}
+                              onChange={(e) => setSettings({...settings, googleAnalyticsId: e.target.value})}
+                              className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-755 w-full font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                            />
+                            <p className="text-[9px] text-slate-450 leading-relaxed">
+                              Örn: <code>G-XXXXXXXXXX</code>. Google Analytics 4 mülkünüzün ölçüm kimliğini buraya ekleyerek sitenizin ziyaretçi trafiğini anlık izleyebilirsiniz.
                             </p>
                           </div>
                         </div>

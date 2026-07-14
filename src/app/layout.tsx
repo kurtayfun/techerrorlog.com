@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { getSettingsData } from '@/lib/content';
+import Script from 'next/script';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,11 +23,29 @@ export default async function RootLayout({
   const settings = await getSettingsData();
   const adsenseEnabled = !!settings?.adsenseEnabled;
   const adsensePublisherId = settings?.adsensePublisherId || '';
+  const googleAnalyticsId = settings?.googleAnalyticsId || '';
 
   return (
     <html lang="en" className={`${inter.variable} min-h-screen`} suppressHydrationWarning>
-      <head />
       <body id="root-body" className="bg-slate-50 text-slate-700 font-sans min-h-screen transition-colors duration-200" suppressHydrationWarning>
+        {googleAnalyticsId && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${googleAnalyticsId}', {
+                  page_path: window.location.pathname,
+                });
+              `}
+            </Script>
+          </>
+        )}
         <script
           id="theme-initializer"
           dangerouslySetInnerHTML={{
