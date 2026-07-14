@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'Terms of Service | TechErrorLog',
   description: 'Review the terms of use and professional liability disclaimers for executing administrative command logs and tools.',
   alternates: {
-    canonical: 'https://techerrorlog.com/terms',
+    canonical: '/terms',
   },
 };
 

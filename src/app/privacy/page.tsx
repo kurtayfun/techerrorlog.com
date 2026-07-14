@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'Privacy Policy | TechErrorLog',
   description: 'Understand how TechErrorLog collects, safeguards, and handles analytical cookie tokens and administrative details.',
   alternates: {
-    canonical: 'https://techerrorlog.com/privacy',
+    canonical: '/privacy',
   },
 };
 

@@ -11,8 +11,28 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'TechErrorLog.com',
-  description: 'A clean, structured repository for logging and resolving technical errors.',
+  metadataBase: new URL('https://techerrorlog.com'),
+  title: {
+    default: 'TechErrorLog.com | System Diagnostic Logs & Solutions',
+    template: '%s | TechErrorLog.com',
+  },
+  description: 'A clean, structured repository for logging and resolving technical errors and system diagnostics.',
+  alternates: {
+    canonical: './',
+  },
+  openGraph: {
+    title: 'TechErrorLog.com | System Diagnostic Logs & Solutions',
+    description: 'A clean, structured repository for logging and resolving technical errors and system diagnostics.',
+    url: 'https://techerrorlog.com',
+    siteName: 'TechErrorLog',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'TechErrorLog.com | System Diagnostic Logs & Solutions',
+    description: 'A clean, structured repository for logging and resolving technical errors and system diagnostics.',
+  },
 };
 
 export default async function RootLayout({
