@@ -144,6 +144,9 @@ export default function AdminGeneratorPage() {
   const [isLinking, setIsLinking] = useState<boolean>(false);
   const [linkingResult, setLinkingResult] = useState<{ linkedCount: number; modifiedFiles: string[] } | null>(null);
 
+  // Backup loading state
+  const [isBackupLoading, setIsBackupLoading] = useState<boolean>(false);
+
   // Filter & Search states
   const [articleSearch, setArticleSearch] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -345,6 +348,53 @@ export default function AdminGeneratorPage() {
       alert(`Veritabanı güncellenirken hata oluştu: ${err.message}`);
       return false;
     }
+  };
+
+  // Run full backup from Firestore to local JSON files
+  const handleBackupToLocal = async () => {
+    setIsBackupLoading(true);
+    try {
+      const pwd = sessionStorage.getItem("admin_password") || "";
+      const response = await fetch("/api/admin/db", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${pwd}`
+        },
+        body: JSON.stringify({ type: "backup_to_local", data: {} }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert(result.message);
+        await loadDatabase(); // Refresh local DB states after sync
+      } else {
+        alert("Yedekleme başarısız: " + (result.error || "Bilinmeyen hata"));
+      }
+    } catch (err: any) {
+      alert("Yedekleme hatası: " + err.message);
+    } finally {
+      setIsBackupLoading(false);
+    }
+  };
+
+  // Download a single unified JSON backup in the browser
+  const downloadBackup = () => {
+    const backupData = {
+      backupDate: new Date().toISOString(),
+      articles,
+      categories,
+      settings,
+      internalLinks
+    };
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(backupData, null, 2)
+    )}`;
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", jsonString);
+    downloadAnchor.setAttribute("download", `techerrorlog_all_data_backup_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   // Add standard new article entry to register
@@ -1739,6 +1789,66 @@ export default function AdminGeneratorPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* DATA BACKUP & RECOVERY CARD */}
+                  <div className="pt-6 border-t border-slate-100 space-y-4">
+                    <span className="text-[10px] font-extrabold text-slate-450 block uppercase tracking-wider">Veri Güvenliği, Yedekleme ve Kurtarma Merkezi</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3 flex flex-col justify-between">
+                        <div className="space-y-1.5">
+                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <Database className="w-4 h-4 text-blue-600 animate-pulse" />
+                            Yerel Dosyalara Eşitle (Yedek Al)
+                          </span>
+                          <p className="text-[11px] text-slate-500 leading-normal">
+                            Bu işlem, buluttaki tüm makaleleri, kategorileri ve sistem ayarlarını çekip sunucudaki yerel JSON dosyalarına (<code>src/data/articles.json</code>) kalıcı olarak yazar. 
+                          </p>
+                          <div className="bg-blue-50/55 rounded-xl p-3 border border-blue-100 text-[10px] text-blue-800 leading-normal">
+                            <strong>Kota Güvencesi:</strong> Firebase Firestore kotanız dolsa bile, siteniz bu yerel yedek dosyalardan okuyarak kesintisiz ve hatasız açılmaya devam eder.
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleBackupToLocal}
+                          disabled={isBackupLoading}
+                          className="w-full mt-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm uppercase tracking-wide"
+                        >
+                          {isBackupLoading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Eşitleniyor & Yedekleniyor...</span>
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Yerel Dosyalara Eşitle (Yedekle)</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3 flex flex-col justify-between">
+                        <div className="space-y-1.5">
+                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <Save className="w-4 h-4 text-emerald-650" />
+                            Yedek Dosyasını Bilgisayara İndir
+                          </span>
+                          <p className="text-[11px] text-slate-500 leading-normal">
+                            Sitedeki tüm yazıları, kategorileri, SEO ayarlarını ve prompt yönergelerini tek bir tıklamayla bilgisayarınıza <code>.json</code> yedeği olarak indirir.
+                          </p>
+                          <div className="bg-emerald-50/55 rounded-xl p-3 border border-emerald-100 text-[10px] text-emerald-800 leading-normal">
+                            <strong>Evrensel Kurtarma:</strong> Bilgisayarınıza indireceğiniz bu yedek dosyasını dilediğiniz an başka bir yere kopyalayabilir veya veritabanı çöktüğünde yeniden yükleyebilirsiniz.
+                          </div>
+                        </div>
+                        <button
+                          onClick={downloadBackup}
+                          className="w-full mt-2 bg-slate-900 hover:bg-slate-850 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm uppercase tracking-wide"
+                        >
+                          <Save className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Yedek Dosyasını (.json) İndir</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* PROMPT EDITOR FIELD */}
                   <div className="space-y-2 pt-4 border-t border-slate-100">
