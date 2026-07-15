@@ -100,10 +100,104 @@ export function parseFrontmatter(fileContent: string): Doc {
   };
 }
 
+export function cleanContentAndExtractMetadata(content: string, existingMetadata: DocMetadata): { metadata: DocMetadata, content: string } {
+  const trimmed = (content || '').trim();
+  if (trimmed.startsWith('---')) {
+    const parsed = parseFrontmatter(content);
+    const mergedMetadata: DocMetadata = {
+      slug: parsed.metadata.slug || existingMetadata.slug,
+      title: parsed.metadata.title !== 'Untitled Diagnostic Document' && parsed.metadata.title !== 'Untitled' ? parsed.metadata.title : existingMetadata.title,
+      description: parsed.metadata.description !== 'System health troubleshooting diagnostic logs.' && parsed.metadata.description !== '' ? parsed.metadata.description : existingMetadata.description,
+      errorCode: parsed.metadata.errorCode !== 'General' ? parsed.metadata.errorCode : existingMetadata.errorCode,
+      category: parsed.metadata.category !== 'Other' ? parsed.metadata.category : existingMetadata.category,
+      difficulty: parsed.metadata.difficulty !== 'Medium' ? parsed.metadata.difficulty : existingMetadata.difficulty,
+      estTime: parsed.metadata.estTime !== '5 Mins' && parsed.metadata.estTime !== '5 min' ? parsed.metadata.estTime : existingMetadata.estTime,
+      successRate: parsed.metadata.successRate !== '100%' ? parsed.metadata.successRate : existingMetadata.successRate,
+      date: parsed.metadata.date || existingMetadata.date,
+      author: parsed.metadata.author || existingMetadata.author,
+      tags: parsed.metadata.tags.length > 0 ? parsed.metadata.tags : existingMetadata.tags,
+    };
+    return {
+      metadata: mergedMetadata,
+      content: parsed.content,
+    };
+  }
+  return {
+    metadata: existingMetadata,
+    content: content,
+  };
+}
+
 // Global flag to track seeding status during hot server context
 let isSeeded = false;
 let cachedSettings: any = null;
 let cachedPrompts: any = null;
+
+// Circuit breaker state to handle Firestore quota exhaustion gracefully
+let isFirestoreQuotaExceeded = false;
+let lastQuotaCheckTime = 0;
+const QUOTA_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes (600,000 ms)
+const QUOTA_FILE_PATH = "/tmp/firestore_quota_exceeded_timestamp.txt";
+
+function checkQuotaCircuitBreaker(): boolean {
+  if (isFirestoreQuotaExceeded) {
+    const now = Date.now();
+    if (now - lastQuotaCheckTime > QUOTA_COOLDOWN_MS) {
+      isFirestoreQuotaExceeded = false;
+      try {
+        if (fs.existsSync(QUOTA_FILE_PATH)) {
+          fs.unlinkSync(QUOTA_FILE_PATH);
+        }
+      } catch (e) {}
+    } else {
+      return true;
+    }
+  }
+
+  // File-based check to persist across serverless instances / server reloads
+  try {
+    if (fs.existsSync(QUOTA_FILE_PATH)) {
+      const content = fs.readFileSync(QUOTA_FILE_PATH, "utf8").trim();
+      const timestamp = parseInt(content, 10);
+      if (!isNaN(timestamp)) {
+        const now = Date.now();
+        if (now - timestamp < QUOTA_COOLDOWN_MS) {
+          isFirestoreQuotaExceeded = true;
+          lastQuotaCheckTime = timestamp;
+          return true;
+        } else {
+          try {
+            fs.unlinkSync(QUOTA_FILE_PATH);
+          } catch (e) {}
+        }
+      }
+    }
+  } catch (err) {
+    // Ignore any read/write issues in /tmp
+  }
+
+  return isFirestoreQuotaExceeded;
+}
+
+function handleFirestoreError(err: any) {
+  const errMsg = String(err?.message || err || "").toLowerCase();
+  if (
+    errMsg.includes("quota limit exceeded") || 
+    errMsg.includes("quota exceeded") || 
+    errMsg.includes("resource_exhausted") || 
+    errMsg.includes("quota") ||
+    errMsg.includes("limit exceeded") ||
+    errMsg.includes("exceeded free quota")
+  ) {
+    const now = Date.now();
+    isFirestoreQuotaExceeded = true;
+    lastQuotaCheckTime = now;
+    try {
+      fs.writeFileSync(QUOTA_FILE_PATH, String(now), "utf8");
+    } catch (e) {}
+    console.warn(`[Firestore Circuit Breaker] Quota limit detected. Gracefully failing over to local file-based database for next 10 minutes.`);
+  }
+}
 
 const adminPayload = (data: any) => ({
   ...data,
@@ -113,6 +207,9 @@ const adminPayload = (data: any) => ({
 // One-time startup synchronization mapping local static elements to Cloud Firestore
 export async function seedIfEmpty() {
   if (isSeeded) return;
+  if (checkQuotaCircuitBreaker()) {
+    return;
+  }
 
   // Try seeding via firebaseAdminDb first (Admin SDK)
   if (firebaseAdminDb) {
@@ -188,12 +285,15 @@ export async function seedIfEmpty() {
       console.log("[db-seed] Seeding finished successfully via Admin SDK.");
       return;
     } catch (adminError: any) {
-      console.warn("[db-seed] Seeding failed with Admin SDK, falling back to Client Web SDK:", adminError.message);
+      handleFirestoreError(adminError);
+      if (!checkQuotaCircuitBreaker()) {
+        console.warn("[db-seed] Seeding failed with Admin SDK, falling back to Client Web SDK:", adminError.message);
+      }
     }
   }
 
   // Fallback to client SDK (adminDb)
-  if (adminDb) {
+  if (adminDb && !checkQuotaCircuitBreaker()) {
     try {
       const seedCheck = await getDoc(doc(adminDb, "settings", "seed_state"));
       if (seedCheck.exists() && seedCheck.data()?.seeded) {
@@ -261,7 +361,10 @@ export async function seedIfEmpty() {
       isSeeded = true;
       console.log("[db-seed] Seeding finished successfully via Client Web SDK.");
     } catch (error) {
-      console.error("[db-seed] Warning: Firestore automated seeding sequence failed: ", error);
+      handleFirestoreError(error);
+      if (!checkQuotaCircuitBreaker()) {
+        console.error("[db-seed] Warning: Firestore automated seeding sequence failed: ", error);
+      }
     }
   }
 }
@@ -283,6 +386,10 @@ export async function getAllDocs(): Promise<Doc[]> {
       });
     }
 
+    if (checkQuotaCircuitBreaker()) {
+      return localDocs.sort((a, b) => new Date(b.metadata.date).getTime() - new Date(a.metadata.date).getTime());
+    }
+
     // 2. Read database records
     let firestoreDocs: Doc[] = [];
     let fetchSucceeded = false;
@@ -292,54 +399,56 @@ export async function getAllDocs(): Promise<Doc[]> {
         const snapshot = await firebaseAdminDb.collection('articles').get();
         firestoreDocs = snapshot.docs.map((doc: any) => {
           const data = doc.data();
-          return {
-            metadata: {
-              slug: data.slug || doc.id,
-              title: data.title || 'Untitled',
-              description: data.seo?.meta_description || data.description || '',
-              errorCode: data.errorCode || 'General',
-              category: data.category || 'Other',
-              difficulty: data.difficulty || 'Medium',
-              estTime: data.estTime || '5 Mins',
-              successRate: data.successRate || '100%',
-              date: data.updated || data.date || '',
-              author: data.author || 'TechErrorLog Team',
-              tags: data.tags || [],
-            },
-            content: data.content || '',
+          const baseMetadata = {
+            slug: data.slug || doc.id,
+            title: data.title || 'Untitled',
+            description: data.seo?.meta_description || data.description || '',
+            errorCode: data.errorCode || 'General',
+            category: data.category || 'Other',
+            difficulty: data.difficulty || 'Medium',
+            estTime: data.estTime || '5 Mins',
+            successRate: data.successRate || '100%',
+            date: data.updated || data.date || '',
+            author: data.author || 'TechErrorLog Team',
+            tags: data.tags || [],
           };
+          return cleanContentAndExtractMetadata(data.content || '', baseMetadata);
         });
         fetchSucceeded = true;
       } catch (err: any) {
-        console.warn("[FS GET Docs Error] Admin SDK failed, falling back to Client SDK:", err.message);
+        handleFirestoreError(err);
+        if (!checkQuotaCircuitBreaker()) {
+          console.warn("[FS GET Docs Error] Admin SDK failed, falling back to Client SDK:", err.message);
+        }
       }
     }
 
-    if (!fetchSucceeded && adminDb) {
+    if (!fetchSucceeded && adminDb && !checkQuotaCircuitBreaker()) {
       try {
         const snapshot = await getDocs(collection(adminDb, 'articles'));
         firestoreDocs = snapshot.docs.map((doc: any) => {
           const data = doc.data();
-          return {
-            metadata: {
-              slug: data.slug || doc.id,
-              title: data.title || 'Untitled',
-              description: data.seo?.meta_description || data.description || '',
-              errorCode: data.errorCode || 'General',
-              category: data.category || 'Other',
-              difficulty: data.difficulty || 'Medium',
-              estTime: data.estTime || '5 Mins',
-              successRate: data.successRate || '100%',
-              date: data.updated || data.date || '',
-              author: data.author || 'TechErrorLog Team',
-              tags: data.tags || [],
-            },
-            content: data.content || '',
+          const baseMetadata = {
+            slug: data.slug || doc.id,
+            title: data.title || 'Untitled',
+            description: data.seo?.meta_description || data.description || '',
+            errorCode: data.errorCode || 'General',
+            category: data.category || 'Other',
+            difficulty: data.difficulty || 'Medium',
+            estTime: data.estTime || '5 Mins',
+            successRate: data.successRate || '100%',
+            date: data.updated || data.date || '',
+            author: data.author || 'TechErrorLog Team',
+            tags: data.tags || [],
           };
+          return cleanContentAndExtractMetadata(data.content || '', baseMetadata);
         });
         fetchSucceeded = true;
       } catch (err) {
-        console.error("[FS GET Docs Error] client SDK fallback failed too: ", err);
+        handleFirestoreError(err);
+        if (!checkQuotaCircuitBreaker()) {
+          console.error("[FS GET Docs Error] client SDK fallback failed too: ", err);
+        }
       }
     }
 
@@ -360,6 +469,25 @@ export async function getDocBySlug(slug: string): Promise<Doc | null> {
   try {
     await seedIfEmpty();
 
+    const contentDir = path.join(process.cwd(), 'src/content');
+    const getLocalDoc = () => {
+      const targetFile = path.join(contentDir, `${slug}.mdx`);
+      if (fs.existsSync(targetFile)) {
+        const fileContent = fs.readFileSync(targetFile, 'utf8');
+        return parseFrontmatter(fileContent);
+      }
+      const targetMdFile = path.join(contentDir, `${slug}.md`);
+      if (fs.existsSync(targetMdFile)) {
+        const fileContent = fs.readFileSync(targetMdFile, 'utf8');
+        return parseFrontmatter(fileContent);
+      }
+      return null;
+    };
+
+    if (checkQuotaCircuitBreaker()) {
+      return getLocalDoc();
+    }
+
     // 1. Try to query database using firebaseAdminDb
     if (firebaseAdminDb) {
       try {
@@ -367,72 +495,62 @@ export async function getDocBySlug(slug: string): Promise<Doc | null> {
         if (docSnap.exists) {
           const data = docSnap.data();
           if (data) {
-            return {
-              metadata: {
-                slug: data.slug || docSnap.id,
-                title: data.title || 'Untitled',
-                description: data.seo?.meta_description || data.description || '',
-                errorCode: data.errorCode || 'General',
-                category: data.category || 'Other',
-                difficulty: data.difficulty || 'Medium',
-                estTime: data.estTime || '5 Mins',
-                successRate: data.successRate || '100%',
-                date: data.updated || data.date || '',
-                author: data.author || 'TechErrorLog Team',
-                tags: data.tags || [],
-              },
-              content: data.content || '',
+            const baseMetadata = {
+              slug: data.slug || docSnap.id,
+              title: data.title || 'Untitled',
+              description: data.seo?.meta_description || data.description || '',
+              errorCode: data.errorCode || 'General',
+              category: data.category || 'Other',
+              difficulty: data.difficulty || 'Medium',
+              estTime: data.estTime || '5 Mins',
+              successRate: data.successRate || '100%',
+              date: data.updated || data.date || '',
+              author: data.author || 'TechErrorLog Team',
+              tags: data.tags || [],
             };
+            return cleanContentAndExtractMetadata(data.content || '', baseMetadata);
           }
         }
       } catch (err: any) {
-        console.warn(`[FS GET Single Doc Error] slug=${slug} Admin SDK failed, falling back to Client SDK:`, err.message);
+        handleFirestoreError(err);
+        if (!checkQuotaCircuitBreaker()) {
+          console.warn(`[FS GET Single Doc Error] slug=${slug} Admin SDK failed, falling back to Client SDK:`, err.message);
+        }
       }
     }
 
     // Fallback to client SDK (adminDb)
-    if (adminDb) {
+    if (adminDb && !checkQuotaCircuitBreaker()) {
       try {
         const docSnap = await getDoc(doc(adminDb, 'articles', slug));
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data) {
-            return {
-              metadata: {
-                slug: data.slug || docSnap.id,
-                title: data.title || 'Untitled',
-                description: data.seo?.meta_description || data.description || '',
-                errorCode: data.errorCode || 'General',
-                category: data.category || 'Other',
-                difficulty: data.difficulty || 'Medium',
-                estTime: data.estTime || '5 Mins',
-                successRate: data.successRate || '100%',
-                date: data.updated || data.date || '',
-                author: data.author || 'TechErrorLog Team',
-                tags: data.tags || [],
-              },
-              content: data.content || '',
+            const baseMetadata = {
+              slug: data.slug || docSnap.id,
+              title: data.title || 'Untitled',
+              description: data.seo?.meta_description || data.description || '',
+              errorCode: data.errorCode || 'General',
+              category: data.category || 'Other',
+              difficulty: data.difficulty || 'Medium',
+              estTime: data.estTime || '5 Mins',
+              successRate: data.successRate || '100%',
+              date: data.updated || data.date || '',
+              author: data.author || 'TechErrorLog Team',
+              tags: data.tags || [],
             };
+            return cleanContentAndExtractMetadata(data.content || '', baseMetadata);
           }
         }
-      } catch (err) {
-        console.error(`[FS GET Single Doc Error] slug=${slug}: `, err);
+      } catch (err: any) {
+        handleFirestoreError(err);
+        if (!checkQuotaCircuitBreaker()) {
+          console.error(`[FS GET Single Doc Error] slug=${slug}: `, err);
+        }
       }
     }
 
-    // 2. Local fallback
-    const contentDir = path.join(process.cwd(), 'src/content');
-    const targetFile = path.join(contentDir, `${slug}.mdx`);
-    if (fs.existsSync(targetFile)) {
-      const fileContent = fs.readFileSync(targetFile, 'utf8');
-      return parseFrontmatter(fileContent);
-    }
-    const targetMdFile = path.join(contentDir, `${slug}.md`);
-    if (fs.existsSync(targetMdFile)) {
-      const fileContent = fs.readFileSync(targetMdFile, 'utf8');
-      return parseFrontmatter(fileContent);
-    }
-    return null;
+    return getLocalDoc();
   } catch (error) {
     console.error(`Error reading doc slug: ${slug}`, error);
     return null;
@@ -491,6 +609,13 @@ export async function getCategoriesData() {
       }
     }
 
+    if (checkQuotaCircuitBreaker()) {
+      if (fs.existsSync(filePath)) {
+        return JSON.parse(fs.readFileSync(filePath, "utf8"));
+      }
+      return [];
+    }
+
     // Try Firestore Admin first
     if (firebaseAdminDb) {
       try {
@@ -503,12 +628,15 @@ export async function getCategoriesData() {
           return docs;
         }
       } catch (e: any) {
-        console.warn("Failed to read categories via Admin SDK:", e.message);
+        handleFirestoreError(e);
+        if (!checkQuotaCircuitBreaker()) {
+          console.warn("Failed to read categories via Admin SDK:", e.message);
+        }
       }
     }
 
     // Try Firestore Client second
-    if (adminDb) {
+    if (adminDb && !checkQuotaCircuitBreaker()) {
       try {
         const snapshot = await getDocs(collection(adminDb, "categories"));
         if (!snapshot.empty) {
@@ -518,8 +646,11 @@ export async function getCategoriesData() {
           }
           return docs;
         }
-      } catch (e) {
-        console.error("Failed to read categories from firestore:", e);
+      } catch (e: any) {
+        handleFirestoreError(e);
+        if (!checkQuotaCircuitBreaker()) {
+          console.error("Failed to read categories from firestore:", e);
+        }
       }
     }
 
@@ -536,6 +667,23 @@ export async function getSettingsData() {
   try {
     await seedIfEmpty();
 
+    const getLocalSettings = () => {
+      if (cachedSettings) {
+        return cachedSettings;
+      }
+      const filePath = path.join(process.cwd(), "src/data/settings.json");
+      if (fs.existsSync(filePath)) {
+        const settings = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        cachedSettings = settings;
+        return settings;
+      }
+      return {};
+    };
+
+    if (checkQuotaCircuitBreaker()) {
+      return getLocalSettings();
+    }
+
     // Try Firestore Admin first
     if (firebaseAdminDb) {
       try {
@@ -545,34 +693,30 @@ export async function getSettingsData() {
           return cachedSettings;
         }
       } catch (e: any) {
-        console.warn("Failed to read settings via Admin SDK:", e.message);
+        handleFirestoreError(e);
+        if (!checkQuotaCircuitBreaker()) {
+          console.warn("Failed to read settings via Admin SDK:", e.message);
+        }
       }
     }
 
     // Try Firestore Client second
-    if (adminDb) {
+    if (adminDb && !checkQuotaCircuitBreaker()) {
       try {
         const docSnap = await getDoc(doc(adminDb, "settings", "global"));
         if (docSnap.exists()) {
           cachedSettings = docSnap.data() || {};
           return cachedSettings;
         }
-      } catch (e) {
-        console.error("Failed to read settings from firestore:", e);
+      } catch (e: any) {
+        handleFirestoreError(e);
+        if (!checkQuotaCircuitBreaker()) {
+          console.error("Failed to read settings from firestore:", e);
+        }
       }
     }
 
-    // Fallback to in-memory cache if database failed
-    if (cachedSettings) {
-      return cachedSettings;
-    }
-
-    const filePath = path.join(process.cwd(), "src/data/settings.json");
-    if (fs.existsSync(filePath)) {
-      const settings = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      cachedSettings = settings;
-      return settings;
-    }
+    return getLocalSettings();
   } catch (e) {
     console.error("Error reading settings JSON:", e);
   }
@@ -583,6 +727,23 @@ export async function getPromptsData() {
   try {
     await seedIfEmpty();
 
+    const getLocalPrompts = () => {
+      if (cachedPrompts) {
+        return cachedPrompts;
+      }
+      const filePath = path.join(process.cwd(), "src/data/prompts.json");
+      if (fs.existsSync(filePath)) {
+        const prompts = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        cachedPrompts = prompts;
+        return prompts;
+      }
+      return {};
+    };
+
+    if (checkQuotaCircuitBreaker()) {
+      return getLocalPrompts();
+    }
+
     // Try Firestore Admin first
     if (firebaseAdminDb) {
       try {
@@ -592,34 +753,30 @@ export async function getPromptsData() {
           return cachedPrompts;
         }
       } catch (e: any) {
-        console.warn("Failed to read prompts via Admin SDK:", e.message);
+        handleFirestoreError(e);
+        if (!checkQuotaCircuitBreaker()) {
+          console.warn("Failed to read prompts via Admin SDK:", e.message);
+        }
       }
     }
 
     // Try Firestore Client second
-    if (adminDb) {
+    if (adminDb && !checkQuotaCircuitBreaker()) {
       try {
         const docSnap = await getDoc(doc(adminDb, "settings", "prompts"));
         if (docSnap.exists()) {
           cachedPrompts = docSnap.data() || {};
           return cachedPrompts;
         }
-      } catch (e) {
-        console.error("Failed to read prompts from firestore:", e);
+      } catch (e: any) {
+        handleFirestoreError(e);
+        if (!checkQuotaCircuitBreaker()) {
+          console.error("Failed to read prompts from firestore:", e);
+        }
       }
     }
 
-    // Fallback to in-memory cache if database failed
-    if (cachedPrompts) {
-      return cachedPrompts;
-    }
-
-    const filePath = path.join(process.cwd(), "src/data/prompts.json");
-    if (fs.existsSync(filePath)) {
-      const prompts = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      cachedPrompts = prompts;
-      return prompts;
-    }
+    return getLocalPrompts();
   } catch (e) {
     console.error("Error reading prompts JSON:", e);
   }
@@ -643,75 +800,6 @@ export async function getArticlesData() {
       localArticles = JSON.parse(fs.readFileSync(filePath, "utf8"));
     }
 
-    // 2. Read database
-    let firestoreArticles: any[] = [];
-    let fetchSucceeded = false;
-
-    if (firebaseAdminDb) {
-      try {
-        const snapshot = await firebaseAdminDb.collection('articles').get();
-        firestoreArticles = snapshot.docs.map((doc: any) => {
-          const data = doc.data();
-          return {
-            id: data.id || doc.id,
-            category: data.category || 'Other',
-            title: data.title || '',
-            slug: data.slug || doc.id,
-            errorCode: data.errorCode || 'General',
-            priority: data.priority || 2,
-            status: data.status || 'draft',
-            difficulty: data.difficulty || 'Medium',
-            estTime: data.estTime || '5 min',
-            successRate: data.successRate || '100%',
-            tags: data.tags || [],
-            keywords: data.keywords || [],
-            updated: data.updated || null,
-            seo: data.seo || {}
-          };
-        });
-        fetchSucceeded = true;
-      } catch (err: any) {
-        console.warn("[FS LIST Articles Error] Admin SDK failed:", err.message);
-      }
-    }
-
-    if (!fetchSucceeded && adminDb) {
-      try {
-        const snapshot = await getDocs(collection(adminDb, 'articles'));
-        firestoreArticles = snapshot.docs.map((doc: any) => {
-          const data = doc.data();
-          return {
-            id: data.id || doc.id,
-            category: data.category || 'Other',
-            title: data.title || '',
-            slug: data.slug || doc.id,
-            errorCode: data.errorCode || 'General',
-            priority: data.priority || 2,
-            status: data.status || 'draft',
-            difficulty: data.difficulty || 'Medium',
-            estTime: data.estTime || '5 min',
-            successRate: data.successRate || '100%',
-            tags: data.tags || [],
-            keywords: data.keywords || [],
-            updated: data.updated || null,
-            seo: data.seo || {}
-          };
-        });
-        fetchSucceeded = true;
-      } catch (err) {
-        console.error("[FS LIST Articles Error] fallback applied: ", err);
-      }
-    }
-
-    // 3. Merge preferring Firestore records
-    const articlesMap = new Map<string, any>();
-    localArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
-    firestoreArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
-
-    const mergedArticles = Array.from(articlesMap.values());
-    let updatedAny = false;
-
-    // Local helper to map categories to beautiful default tags
     const getRetroTags = (category: string, errorCode: string): string[] => {
       const catClean = (category || "").toLowerCase();
       let tags = ["windows"];
@@ -743,6 +831,89 @@ export async function getArticlesData() {
       return tags;
     };
 
+    if (checkQuotaCircuitBreaker()) {
+      localArticles.forEach(art => {
+        if (!art.tags || !Array.isArray(art.tags) || art.tags.length === 0) {
+          art.tags = getRetroTags(art.category, art.errorCode);
+        }
+      });
+      return localArticles;
+    }
+
+    // 2. Read database
+    let firestoreArticles: any[] = [];
+    let fetchSucceeded = false;
+
+    if (firebaseAdminDb) {
+      try {
+        const snapshot = await firebaseAdminDb.collection('articles').get();
+        firestoreArticles = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          return {
+            id: data.id || doc.id,
+            category: data.category || 'Other',
+            title: data.title || '',
+            slug: data.slug || doc.id,
+            errorCode: data.errorCode || 'General',
+            priority: data.priority || 2,
+            status: data.status || 'draft',
+            difficulty: data.difficulty || 'Medium',
+            estTime: data.estTime || '5 min',
+            successRate: data.successRate || '100%',
+            tags: data.tags || [],
+            keywords: data.keywords || [],
+            updated: data.updated || null,
+            seo: data.seo || {}
+          };
+        });
+        fetchSucceeded = true;
+      } catch (err: any) {
+        handleFirestoreError(err);
+        if (!checkQuotaCircuitBreaker()) {
+          console.warn("[FS LIST Articles Error] Admin SDK failed:", err.message);
+        }
+      }
+    }
+
+    if (!fetchSucceeded && adminDb && !checkQuotaCircuitBreaker()) {
+      try {
+        const snapshot = await getDocs(collection(adminDb, 'articles'));
+        firestoreArticles = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          return {
+            id: data.id || doc.id,
+            category: data.category || 'Other',
+            title: data.title || '',
+            slug: data.slug || doc.id,
+            errorCode: data.errorCode || 'General',
+            priority: data.priority || 2,
+            status: data.status || 'draft',
+            difficulty: data.difficulty || 'Medium',
+            estTime: data.estTime || '5 min',
+            successRate: data.successRate || '100%',
+            tags: data.tags || [],
+            keywords: data.keywords || [],
+            updated: data.updated || null,
+            seo: data.seo || {}
+          };
+        });
+        fetchSucceeded = true;
+      } catch (err: any) {
+        handleFirestoreError(err);
+        if (!checkQuotaCircuitBreaker()) {
+          console.error("[FS LIST Articles Error] fallback applied: ", err);
+        }
+      }
+    }
+
+    // 3. Merge preferring Firestore records
+    const articlesMap = new Map<string, any>();
+    localArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
+    firestoreArticles.forEach((aBySlug: any) => articlesMap.set(aBySlug.slug, aBySlug));
+
+    const mergedArticles = Array.from(articlesMap.values());
+    let updatedAny = false;
+
     for (const art of mergedArticles) {
       if (!art.tags || !Array.isArray(art.tags) || art.tags.length === 0) {
         art.tags = getRetroTags(art.category, art.errorCode);
@@ -750,11 +921,14 @@ export async function getArticlesData() {
         console.log(`[Auto-Retrofitting Tags] Added tags to article "${art.slug}":`, art.tags);
 
         // Sync back to Cloud Firestore
-        if (adminDb) {
+        if (adminDb && !checkQuotaCircuitBreaker()) {
           try {
             await setDoc(doc(adminDb, "articles", art.slug), adminPayload(art), { merge: true });
-          } catch (fsErr) {
-            console.error(`[Auto-Retrofitting Tags] Firestore sync failed for ${art.slug}:`, fsErr);
+          } catch (fsErr: any) {
+            handleFirestoreError(fsErr);
+            if (!checkQuotaCircuitBreaker()) {
+              console.error(`[Auto-Retrofitting Tags] Firestore sync failed for ${art.slug}:`, fsErr);
+            }
           }
         }
       }
