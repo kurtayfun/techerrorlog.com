@@ -128,51 +128,44 @@ export default function BlogTOC({ headings, variant = 'sidebar' }: BlogTOCProps)
 
   if (variant === 'mobile') {
     return (
-      <div id="blog-toc-mobile-container" className="bg-slate-50/80 border border-slate-200/75 rounded-2xl p-4.5 mb-6 select-none shadow-[0_1px_3px_rgba(0,0,0,0.015)] dark:bg-slate-900/30 dark:border-slate-800">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-between text-left text-slate-800 dark:text-slate-300 font-bold text-xs cursor-pointer"
-          aria-expanded={isOpen}
-        >
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
-              <List className="w-3.5 h-3.5" />
-            </div>
-            <span className="uppercase font-mono font-extrabold tracking-wider text-[11px] text-slate-500 dark:text-slate-400">
-              Table of Contents
-            </span>
-          </div>
-          <div className="text-slate-400 dark:text-slate-500">
-            {isOpen ? <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />}
-          </div>
-        </button>
+      <div id="blog-toc-mobile-container" className="bg-slate-50/40 border border-slate-200/50 rounded-2xl p-5 mb-6 select-none dark:bg-slate-900/10 dark:border-slate-800">
+        <h4 className="text-slate-400 font-extrabold uppercase tracking-wider text-[10px] mb-4 dark:text-slate-500 flex items-center gap-2">
+          <List className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          Table of Contents
+        </h4>
+        
+        <nav id="blog-toc-mobile-navigation" className="space-y-1.5 flex flex-col">
+          {displayHeadings.map((heading) => {
+            const isActive = activeId === heading.id;
+            const displayLabel = headingTextMap[heading.id] || heading.text;
+            
+            return (
+              <a
+                key={heading.id}
+                href={`#${heading.id}`}
+                onClick={(e) => handleScroll(e, heading.id)}
+                className={`text-xs flex items-center justify-between px-3 py-2 rounded-r-md border-l-2 transition-all duration-155 group cursor-pointer ${
+                  isActive
+                    ? 'bg-blue-50/70 border-blue-600 text-blue-600 font-bold dark:bg-blue-950/20 dark:border-blue-500 dark:text-blue-400'
+                    : 'border-l-2 border-transparent text-slate-500 hover:text-blue-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800/30'
+                }`}
+              >
+                <span className="truncate">{displayLabel}</span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-500 shrink-0 ml-2 animate-pulse" />
+                )}
+              </a>
+            );
+          })}
+        </nav>
 
-        {isOpen && (
-          <nav id="blog-toc-mobile-navigation" className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-medium">
-            {displayHeadings.map((heading) => {
-              const isActive = activeId === heading.id;
-              const displayLabel = headingTextMap[heading.id] || heading.text;
-              
-              return (
-                <a
-                  key={heading.id}
-                  href={`#${heading.id}`}
-                  onClick={(e) => handleScroll(e, heading.id)}
-                  className={`text-xs flex items-center justify-between px-3 py-1.5 rounded-lg border transition-all duration-155 cursor-pointer ${
-                    isActive
-                      ? 'bg-blue-50 border-blue-200/70 text-blue-600 font-bold shadow-sm dark:bg-blue-950/20 dark:border-blue-500/35 dark:text-blue-400'
-                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-white hover:border-slate-100 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800/30'
-                  }`}
-                >
-                  <span className="truncate">{displayLabel}</span>
-                  {isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-500 shrink-0 ml-2 animate-pulse" />
-                  )}
-                </a>
-              );
-            })}
-          </nav>
-        )}
+        {/* Note in bottom corner */}
+        <div id="blog-toc-mobile-help-note" className="mt-5 pt-4 border-t border-slate-150 dark:border-slate-800 flex flex-col gap-1.5">
+          <h5 className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-sans tracking-tight">Need immediate help?</h5>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
+            Follow methods in sequence. Most systems recover fully by completing Method 1.
+          </p>
+        </div>
       </div>
     );
   }
@@ -196,7 +189,7 @@ export default function BlogTOC({ headings, variant = 'sidebar' }: BlogTOCProps)
               className={`text-xs flex items-center justify-between px-3 py-2 rounded-r-md border-l-2 transition-all duration-155 group cursor-pointer ${
                 isActive
                   ? 'bg-blue-50/70 border-blue-600 text-blue-600 font-bold dark:bg-blue-950/20 dark:border-blue-500 dark:text-blue-400'
-                  : 'border-transparent text-slate-500 hover:text-blue-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800/30'
+                  : 'border-l-2 border-transparent text-slate-500 hover:text-blue-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800/30'
               }`}
             >
               <span className="truncate">{displayLabel}</span>

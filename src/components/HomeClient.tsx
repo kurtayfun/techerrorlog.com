@@ -755,7 +755,7 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
                       </div>
 
                       {/* Heading */}
-                      <h3 className="text-slate-900 font-extrabold text-base tracking-tight leading-snug">
+                      <h3 className="text-slate-900 font-extrabold text-base tracking-tight leading-snug break-words">
                         {guide.title}
                       </h3>
 
@@ -959,7 +959,7 @@ export default function HomeClient({ initialDocs, categoriesDb, articlesDb, sett
                                   </span>
                                 </div>
 
-                                <h3 className="text-slate-900 font-extrabold text-base tracking-tight leading-snug">
+                                <h3 className="text-slate-900 font-extrabold text-base tracking-tight leading-snug break-words">
                                   {guide.title}
                                 </h3>
 

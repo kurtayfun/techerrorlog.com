@@ -424,7 +424,7 @@ export default async function BlogPage({ params }: PageProps) {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-slate-900 font-extrabold text-3xl md:text-3.5xl tracking-tight mb-4 leading-tight">
+            <h1 className="text-slate-900 font-extrabold text-3xl md:text-3.5xl tracking-tight mb-4 leading-tight break-words">
               {metadata.title}
             </h1>
 
@@ -632,7 +632,7 @@ export default async function BlogPage({ params }: PageProps) {
                               </span>
                             )}
                           </div>
-                          <h4 className="font-bold text-xs text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-relaxed">
+                          <h4 className="font-bold text-xs text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-relaxed break-words">
                             {rDoc.metadata.title}
                           </h4>
                         </div>
